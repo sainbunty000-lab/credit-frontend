@@ -3,126 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Underwriting Suite</title>
+<title>AI Underwriting Intelligence Suite</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00bcd4">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial, sans-serif;
-background:#0b1629;
-color:white;
-}
-
-.container{
-max-width:1100px;
-margin:auto;
-padding:40px 20px;
-}
-
-.card{
-background:#16233d;
-padding:25px;
-border-radius:12px;
-margin-bottom:20px;
-box-shadow:0 0 20px rgba(0,0,0,0.4);
-}
-
-h1{
-margin-bottom:30px;
-}
-
-input{
-margin:10px 0;
-color:white;
-}
-
-button{
-padding:12px 22px;
-border:none;
-border-radius:8px;
-background:#00bcd4;
-color:white;
-font-weight:bold;
-cursor:pointer;
-transition:0.3s;
-}
-
-button:hover{
-background:#0097a7;
-}
-
-.progress{
-height:10px;
-background:#333;
-border-radius:5px;
-margin-top:10px;
-overflow:hidden;
-}
-
-.progress-bar{
-height:10px;
-background:#00e676;
-width:0%;
-transition:1s;
-}
-
-.result-grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:15px;
-}
-
-.result-box{
-background:#0f1e36;
-padding:15px;
-border-radius:8px;
-}
-
-.green{color:#00e676;}
-.orange{color:orange;}
-.red{color:#ff5252;}
+body{margin:0;font-family:Arial;background:#0b1629;color:white}
+.container{max-width:1200px;margin:auto;padding:30px}
+.nav{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.nav button{padding:10px 18px;border:none;border-radius:6px;background:#1f2f4f;color:white;cursor:pointer}
+.nav button.active{background:#00bcd4}
+.slide{display:none}
+.slide.active{display:block}
+.card{background:#16233d;padding:20px;border-radius:10px;margin-bottom:20px}
+button.primary{background:#00bcd4;border:none;padding:10px 20px;border-radius:6px;color:white;cursor:pointer}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
+.box{background:#0f1e36;padding:15px;border-radius:8px}
+.green{color:#00e676}
+.orange{color:orange}
+.red{color:#ff5252}
+.progress{height:8px;background:#333;border-radius:4px;overflow:hidden;margin-top:10px}
+.progress-bar{height:8px;background:#00e676;width:0%;transition:1s}
+ul{padding-left:20px}
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
 <h1>Enterprise AI Underwriting</h1>
 
-<div class="card">
-<h3>Upload Financial Documents</h3>
-
-<label>Balance Sheet</label><br>
-<input type="file" id="bs"><br>
-
-<label>P&L Statement</label><br>
-<input type="file" id="pl"><br>
-
-<label>Bank Statement</label><br>
-<input type="file" id="bank"><br>
-
-<button onclick="runAnalysis()">Run Analysis</button>
+<div class="nav">
+<button onclick="goSlide(1)" class="active">1 Upload</button>
+<button onclick="goSlide(2)">2 Financial</button>
+<button onclick="goSlide(3)">3 Banking</button>
+<button onclick="goSlide(4)">4 Eligibility</button>
+<button onclick="goSlide(5)">5 CAM</button>
 </div>
 
-<div class="card" id="results" style="display:none">
-
-<h3>Underwriting Dashboard</h3>
-
-<div class="result-grid" id="resultData"></div>
-
-<canvas id="chart" height="120"></canvas>
-
-<h4>Parsing Confidence</h4>
-<div class="progress">
-<div class="progress-bar" id="confidenceBar"></div>
+<!-- SLIDE 1 -->
+<div id="slide1" class="slide active card">
+<h3>Upload Documents</h3>
+<input type="file" id="bs"><br><br>
+<input type="file" id="pl"><br><br>
+<input type="file" id="bank"><br><br>
+<button class="primary" onclick="runAnalysis()">Run Analysis</button>
 </div>
 
+<!-- SLIDE 2 -->
+<div id="slide2" class="slide card">
+<h3>Financial Ratio Analysis</h3>
+<div id="financialData" class="result-grid"></div>
+<canvas id="ratioChart"></canvas>
+</div>
+
+<!-- SLIDE 3 -->
+<div id="slide3" class="slide card">
+<h3>Banking & Fraud Analysis</h3>
+<div id="bankingData"></div>
+<h4>Fraud Flags</h4>
+<ul id="fraudList"></ul>
+</div>
+
+<!-- SLIDE 4 -->
+<div id="slide4" class="slide card">
+<h3>Eligibility Engines</h3>
+<div id="eligibilityData" class="result-grid"></div>
+</div>
+
+<!-- SLIDE 5 -->
+<div id="slide5" class="slide card">
+<h3>Final CAM Report</h3>
+<div id="camReport"></div>
+<button class="primary" onclick="downloadPDF()">Download CAM PDF</button>
 </div>
 
 </div>
@@ -130,6 +87,14 @@ border-radius:8px;
 <script>
 
 const API_URL="https://credit-backend-yh78.onrender.com";
+let globalData=null;
+
+function goSlide(n){
+document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
+document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+document.getElementById("slide"+n).classList.add("active");
+document.querySelectorAll(".nav button")[n-1].classList.add("active");
+}
 
 function riskColor(score){
 if(score>=75) return "green";
@@ -147,8 +112,8 @@ let bs=document.getElementById("bs").files[0];
 let pl=document.getElementById("pl").files[0];
 let bank=document.getElementById("bank").files[0];
 
-if(!bs || !pl || !bank){
-alert("Please upload all 3 documents");
+if(!bs||!pl||!bank){
+alert("Upload all 3 documents");
 return;
 }
 
@@ -157,72 +122,89 @@ fd.append("bs_file",bs);
 fd.append("pl_file",pl);
 fd.append("bank_file",bank);
 
-let res=await fetch(API_URL+"/analyze",{
-method:"POST",
-body:fd
-});
-
+let res=await fetch(API_URL+"/analyze",{method:"POST",body:fd});
 let data=await res.json();
 
-document.getElementById("results").style.display="block";
+globalData=data;
 
-document.getElementById("resultData").innerHTML=`
-<div class="result-box">
-<strong>Case ID</strong><br>${data.Case_ID}
-</div>
+renderFinancial(data);
+renderBanking(data);
+renderEligibility(data);
+renderCAM(data);
 
-<div class="result-box">
-<strong>Working Capital Limit</strong><br>${formatCurrency(data.Working_Capital_Limit)}
-</div>
+goSlide(2);
+}
 
-<div class="result-box">
-<strong>Profit Margin</strong><br>${data.Profit_Margin}%
-</div>
+function renderFinancial(data){
 
-<div class="result-box">
-<strong>Current Ratio</strong><br>${data.Current_Ratio}
-</div>
-
-<div class="result-box">
-<strong>Bank Turnover</strong><br>${formatCurrency(data.Bank_Turnover)}
-</div>
-
-<div class="result-box">
-<strong>Mismatch %</strong><br>${data["Mismatch_%"]}%
-</div>
-
-<div class="result-box">
-<strong>Risk Score</strong><br>
-<span class="${riskColor(data.Risk_Score)}">${data.Risk_Score}</span>
-</div>
-
-<div class="result-box">
-<strong>Decision</strong><br>${data.Decision}
-</div>
+document.getElementById("financialData").innerHTML=`
+<div class="box"><b>Profit Margin</b><br>${data.Profit_Margin}%</div>
+<div class="box"><b>Current Ratio</b><br>${data.Current_Ratio}</div>
+<div class="box"><b>Bank Turnover</b><br>${formatCurrency(data.Bank_Turnover)}</div>
 `;
 
-document.getElementById("confidenceBar").style.width=data.Parsing_Confidence+"%";
-
-new Chart(document.getElementById("chart"),{
+new Chart(document.getElementById("ratioChart"),{
 type:"bar",
 data:{
-labels:["WC Limit","Risk Score","Profit Margin"],
+labels:["Profit Margin","Current Ratio"],
 datasets:[{
-label:"Analysis",
-data:[
-data.Working_Capital_Limit,
-data.Risk_Score,
-data.Profit_Margin
-],
-backgroundColor:[
-"#00bcd4",
-"#ff9800",
-"#4caf50"
-]
+data:[data.Profit_Margin,data.Current_Ratio],
+backgroundColor:["#00bcd4","#4caf50"]
 }]
 }
 });
+}
 
+function renderBanking(data){
+
+document.getElementById("bankingData").innerHTML=`
+<p><b>Mismatch %:</b> ${data["Mismatch_%"]}%</p>
+<p><b>Risk Score:</b> <span class="${riskColor(data.Risk_Score)}">${data.Risk_Score}</span></p>
+<p><b>Decision:</b> ${data.Decision}</p>
+`;
+
+let frauds=[];
+if(data["Mismatch_%"]>30) frauds.push("High Turnover Mismatch");
+if(data.Current_Ratio<0.8) frauds.push("Liquidity Stress");
+if(frauds.length===0) frauds.push("No major red flags");
+
+document.getElementById("fraudList").innerHTML=
+frauds.map(f=>`<li>${f}</li>`).join("");
+}
+
+function renderEligibility(data){
+
+let agriLimit=(data.Profit_Margin*1000)/0.14; // placeholder logic
+document.getElementById("eligibilityData").innerHTML=`
+<div class="box"><b>Agriculture Limit</b><br>${formatCurrency(agriLimit)}</div>
+<div class="box"><b>Working Capital Limit</b><br>${formatCurrency(data.Working_Capital_Limit)}</div>
+`;
+}
+
+function renderCAM(data){
+
+let explanation="";
+if(data.Risk_Score>=75) explanation="Strong financial profile.";
+else if(data.Risk_Score>=50) explanation="Moderate risk profile.";
+else explanation="High risk profile.";
+
+document.getElementById("camReport").innerHTML=`
+<p><b>Case ID:</b> ${data.Case_ID}</p>
+<p><b>Decision:</b> ${data.Decision}</p>
+<p><b>Risk Score:</b> ${data.Risk_Score}</p>
+<p><b>AI Explanation:</b> ${explanation}</p>
+`;
+}
+
+function downloadPDF(){
+
+const { jsPDF } = window.jspdf;
+let doc=new jsPDF();
+doc.text("Credit Appraisal Memorandum",20,20);
+doc.text("Case ID: "+globalData.Case_ID,20,40);
+doc.text("Decision: "+globalData.Decision,20,50);
+doc.text("Risk Score: "+globalData.Risk_Score,20,60);
+doc.save("CAM_Report.pdf");
 }
 
 if("serviceWorker" in navigator){
@@ -230,6 +212,5 @@ navigator.serviceWorker.register("sw.js");
 }
 
 </script>
-
 </body>
 </html>
