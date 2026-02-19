@@ -1,44 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
-<title>Credit Underwriting Suite</title>
+<meta charset="UTF-8"/>
+<title>AI Credit Underwriting Suite</title>
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
 <style>
-body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
-header { background:#0a3d62; color:white; padding:18px; text-align:center; font-size:20px; font-weight:bold; }
-.container { padding:20px; max-width:1100px; margin:auto; }
-.card { background:white; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
-input, select { padding:8px; border:1px solid #ccc; border-radius:6px; width:100%; }
-button { background:#0a3d62; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; }
-button:hover { background:#082c45; }
-table { width:100%; border-collapse:collapse; }
-th, td { border:1px solid #ddd; padding:8px; text-align:center; }
-th { background:#0a3d62; color:white; }
-.green { color:green; font-weight:bold; }
-.orange { color:orange; font-weight:bold; }
-.red { color:red; font-weight:bold; }
-.loading { text-align:center; font-weight:bold; color:#0a3d62; }
-hr { margin:15px 0; }
+body {
+margin:0;
+font-family:'Segoe UI';
+background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
+}
+
+header {
+text-align:center;
+padding:20px;
+font-size:22px;
+font-weight:bold;
+background:rgba(0,0,0,0.3);
+backdrop-filter: blur(8px);
+}
+
+.container {
+max-width:1200px;
+margin:auto;
+padding:20px;
+}
+
+.card {
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(10px);
+border-radius:15px;
+padding:20px;
+margin-bottom:20px;
+box-shadow:0 8px 32px rgba(0,0,0,0.4);
+transition:0.3s;
+}
+
+.card:hover {
+transform:translateY(-5px);
+}
+
+.grid {
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:15px;
+}
+
+input, select {
+padding:8px;
+border:none;
+border-radius:8px;
+background:rgba(255,255,255,0.15);
+color:white;
+width:100%;
+}
+
+button {
+background:linear-gradient(45deg,#00c6ff,#0072ff);
+border:none;
+padding:10px;
+border-radius:8px;
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover {
+transform:scale(1.05);
+}
+
+.result-box {
+padding:15px;
+border-radius:12px;
+margin-bottom:15px;
+background:rgba(255,255,255,0.1);
+}
+
+.green {color:#00ff88;}
+.orange {color:#ffcc00;}
+.red {color:#ff4d4d;}
+
+table {
+width:100%;
+border-collapse:collapse;
+}
+
+th,td {
+padding:8px;
+text-align:center;
+}
+
+th {
+background:rgba(255,255,255,0.2);
+}
+
 </style>
 </head>
 
 <body>
 
-<header>
-Credit Underwriting Intelligence Suite
-</header>
+<header>AI Powered Credit Underwriting Intelligence</header>
 
 <div id="root" class="container"></div>
 
 <script type="text/babel">
 
-const API_URL = "https://credit-backend-yh78.onrender.com";
+const API_URL="https://credit-backend-yh78.onrender.com";
 
 function App(){
 
@@ -52,22 +125,8 @@ const [file,setFile]=React.useState(null);
 const [docResult,setDocResult]=React.useState(null);
 const [result,setResult]=React.useState(null);
 const [cases,setCases]=React.useState([]);
-const [loading,setLoading]=React.useState(false);
 
-const labels={
-sales:"Annual Sales",
-pat:"Net Profit (PAT)",
-dep:"Depreciation",
-stock:"Inventory",
-debtors:"Sundry Debtors",
-creditors:"Sundry Creditors",
-loan_req:"Loan Requested",
-emi:"Existing EMI",
-undocumented:"Undocumented Income",
-bounce:"Cheque Bounces"
-};
-
-const formatCurrency=(num)=>"₹"+Number(num).toLocaleString("en-IN");
+const formatCurrency=(n)=>"₹"+Number(n).toLocaleString("en-IN");
 
 const riskColor=(score)=>{
 if(score>=80) return "green";
@@ -78,7 +137,8 @@ return "red";
 const handleChange=e=>setForm({...form,[e.target.name]:e.target.value});
 
 const uploadDocument=async()=>{
-if(!file||!docType){alert("Select document type and file");return;}
+if(!file||!docType) return alert("Select document type and file");
+
 const formData=new FormData();
 formData.append("file",file);
 formData.append("doc_type",docType);
@@ -87,30 +147,18 @@ const res=await fetch(API_URL+"/parse-document",{method:"POST",body:formData});
 const data=await res.json();
 setDocResult(data);
 
-// Auto-fill financial form if PL/BS
 if(docType==="pl"){
-setForm(f=>({...f,
-sales:data.Sales||"",
-pat:data.Net_Profit||"",
-dep:data.Depreciation||""
-}));
+setForm(f=>({...f,sales:data.Sales||"",pat:data.Net_Profit||"",dep:data.Depreciation||""}));
 }
 if(docType==="bs"){
-setForm(f=>({...f,
-stock:data.Inventory||"",
-debtors:data.Debtors||"",
-creditors:data.Creditors||""
-}));
+setForm(f=>({...f,stock:data.Inventory||"",debtors:data.Debtors||"",creditors:data.Creditors||""}));
 }
 if(docType==="bank"){
-setForm(f=>({...f,
-bounce:data.Bounce_Count||""
-}));
+setForm(f=>({...f,bounce:data.Bounce_Count||""}));
 }
 };
 
-const handleSubmit=async()=>{
-setLoading(true);
+const analyze=async()=>{
 const res=await fetch(API_URL+"/analyze",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -119,7 +167,6 @@ body:JSON.stringify(Object.fromEntries(Object.entries(form).map(([k,v])=>[k,Numb
 const data=await res.json();
 setResult(data);
 fetchCases();
-setLoading(false);
 };
 
 const fetchCases=async()=>{
@@ -133,96 +180,75 @@ React.useEffect(()=>{fetchCases();},[]);
 return(
 <div>
 
-{/* DOCUMENT UPLOAD */}
+{/* Upload Section */}
 <div className="card">
-<h3>Document Upload Section</h3>
-
+<h3>Smart Document Upload</h3>
 <select onChange={(e)=>setDocType(e.target.value)}>
-<option value="">Select Document Type</option>
+<option value="">Select Type</option>
 <option value="bank">Bank Statement</option>
 <option value="bs">Balance Sheet</option>
 <option value="pl">P&L Statement</option>
 </select>
-
 <br/><br/>
-
-<input type="file" onChange={(e)=>setFile(e.target.files[0])} />
-
+<input type="file" onChange={(e)=>setFile(e.target.files[0])}/>
 <br/><br/>
-
 <button onClick={uploadDocument}>Parse Document</button>
-
-{docResult && (
-<div style={{marginTop:"15px"}}>
-<h4>Parsed Result</h4>
-<pre>{JSON.stringify(docResult,null,2)}</pre>
-</div>
-)}
+{docResult && <pre>{JSON.stringify(docResult,null,2)}</pre>}
 </div>
 
-{/* FINANCIAL INPUTS */}
+{/* Financial Form */}
 <div className="card">
 <h3>Financial Inputs</h3>
 <div className="grid">
 {Object.keys(form).map(key=>(
 <div key={key}>
-<label>{labels[key]}</label>
+<label>{key}</label>
 <input name={key} value={form[key]} onChange={handleChange}/>
 </div>
 ))}
 </div>
 <br/>
-<button onClick={handleSubmit}>Run Credit Analysis</button>
+<button onClick={analyze}>Run AI Credit Analysis</button>
 </div>
 
-{loading && <div className="loading">Analyzing Financial Data...</div>}
-
-{/* RESULTS */}
+{/* Results */}
 {result && (
 <div className="card">
-<h3>Credit Analysis Report</h3>
+<h3>Underwriting Results</h3>
 
-<p><b>Case ID:</b> {result.Case_ID}</p>
+<div className="result-box">
+<h4>🌾 Agriculture Lending</h4>
+<p>{formatCurrency(result.Agri_Eligible_Limit)}</p>
+</div>
 
-<hr/>
+<div className="result-box">
+<h4>🏭 Working Capital</h4>
+<p>{formatCurrency(result.Working_Capital_Limit)}</p>
+</div>
 
-<h4>Agriculture Lending Eligibility</h4>
-<p><b>Eligible Limit:</b> {formatCurrency(result.Agri_Eligible_Limit)}</p>
+<div className="result-box">
+<h4>📊 Risk Intelligence</h4>
+<p>Score: <span className={riskColor(result.Risk_Score)}>{result.Risk_Score}</span></p>
+<p>Grade: {result.Risk_Grade}</p>
+<p>Decision: {result.Decision}</p>
+</div>
 
-<hr/>
-
-<h4>Working Capital Eligibility</h4>
-<p><b>Eligible Limit:</b> {formatCurrency(result.Working_Capital_Limit)}</p>
-
-<hr/>
-
-<p><b>Risk Score:</b> <span className={riskColor(result.Risk_Score)}>
-{result.Risk_Score}</span></p>
-
-<p><b>Risk Grade:</b> {result.Risk_Grade}</p>
-<p><b>Decision:</b> {result.Decision}</p>
-
-<hr/>
-
-<h4>Ratio Analysis</h4>
-<p><b>Profit Margin:</b> {result.Profit_Margin}%</p>
-<p><b>Current Ratio:</b> {result.Current_Ratio}</p>
-<p><b>Working Capital Gap:</b> {formatCurrency(result.Working_Capital_Gap)}</p>
-
-<hr/>
-
-<h4>Banking Summary</h4>
-<p><b>Banking Conduct:</b> {result.Banking_Health}</p>
+<div className="result-box">
+<h4>📈 Ratio Dashboard</h4>
+<p>Profit Margin: {result.Profit_Margin}%</p>
+<p>Current Ratio: {result.Current_Ratio}</p>
+<p>WC Gap: {formatCurrency(result.Working_Capital_Gap)}</p>
+<p>Banking Health: {result.Banking_Health}</p>
+</div>
 
 <a href={API_URL+"/generate-cam/"+result.Case_ID} target="_blank">
-<button style={{marginTop:"10px"}}>Download CAM Report</button>
+<button>Download CAM Report</button>
 </a>
 
 </div>
 )}
 
-
-{/* CASE HISTORY */}
+{/* Case History */}
 <div className="card">
 <h3>Case History</h3>
 <table>
@@ -230,17 +256,19 @@ return(
 <tr>
 <th>Date</th>
 <th>Case ID</th>
-<th>Final Limit</th>
+<th>Agri</th>
+<th>WC</th>
 <th>Risk</th>
 <th>Decision</th>
 </tr>
 </thead>
 <tbody>
-{cases.map((c,index)=>(
-<tr key={index}>
+{cases.map((c,i)=>(
+<tr key={i}>
 <td>{c.Created_At}</td>
 <td>{c.Case_ID.substring(0,8)}</td>
-<td>{formatCurrency(c.Final_Limit)}</td>
+<td>{formatCurrency(c.Agri_Limit)}</td>
+<td>{formatCurrency(c.WC_Limit)}</td>
 <td className={riskColor(c.Risk_Score)}>{c.Risk_Score}</td>
 <td>{c.Decision}</td>
 </tr>
