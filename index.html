@@ -2,11 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8"/>
-<title>Enterprise Underwriting System</title>
+<title>Enterprise AI Credit Underwriting</title>
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -23,6 +24,17 @@ font-size:22px;
 background:rgba(0,0,0,0.4);
 }
 
+.progress-container{
+height:6px;
+background:#1e293b;
+}
+
+.progress-bar{
+height:6px;
+background:#00c6ff;
+transition:width 0.5s ease;
+}
+
 .nav{
 display:flex;
 justify-content:space-around;
@@ -36,10 +48,17 @@ border:none;
 color:white;
 font-weight:bold;
 cursor:pointer;
+opacity:0.5;
 }
 
 .nav button.active{
 color:#00eaff;
+opacity:1;
+}
+
+.nav button.locked{
+opacity:0.2;
+cursor:not-allowed;
 }
 
 .container{
@@ -74,7 +93,11 @@ margin-top:10px;
 
 <body>
 
-<header>AI Credit Underwriting Enterprise Suite</header>
+<header>Enterprise AI Credit Underwriting Platform</header>
+
+<div class="progress-container">
+<div id="progress" class="progress-bar"></div>
+</div>
 
 <div id="root" class="container"></div>
 
@@ -85,11 +108,13 @@ const API_URL="https://credit-backend-yh78.onrender.com";
 function App(){
 
 const [slide,setSlide]=React.useState(1);
+const [maxSlide,setMaxSlide]=React.useState(1);
 const [bs,setBS]=React.useState(null);
 const [pl,setPL]=React.useState(null);
 const [bank,setBank]=React.useState(null);
 const [result,setResult]=React.useState(null);
-const [full,setFull]=React.useState(null);
+
+const totalSlides=6;
 
 const riskColor=(score)=>{
 if(score>=80) return "green";
@@ -99,128 +124,174 @@ return "red";
 
 const formatCurrency=(n)=>"₹"+Number(n||0).toLocaleString("en-IN");
 
+const changeSlide=(n)=>{
+if(n<=maxSlide) setSlide(n);
+};
+
+React.useEffect(()=>{
+document.getElementById("progress").style.width=
+(slide/totalSlides*100)+"%";
+},[slide]);
+
 const runFull=async()=>{
+if(!bs||!pl||!bank){
+alert("Upload all three documents");
+return;
+}
+
 const fd=new FormData();
 fd.append("bs_file",bs);
 fd.append("pl_file",pl);
 fd.append("bank_file",bank);
 
-const res=await fetch(API_URL+"/full-analysis",{method:"POST",body:fd});
-const data=await res.json();
-setFull(data);
-setSlide(2);
-};
-
-const runEligibility=async()=>{
-if(!full) return alert("Run full analysis first");
-
-const payload={
-sales:full.Parsed_Data.Sales,
-pat:full.Parsed_Data.PAT,
-dep:0,
-stock:full.Parsed_Data.Stock,
-debtors:full.Parsed_Data.Debtors,
-creditors:full.Parsed_Data.Creditors,
-loan_req:0,
-emi:0,
-undocumented:0,
-bounce:full.Parsed_Data.Bounce_Count
-};
-
-const res=await fetch(API_URL+"/analyze",{
+const res=await fetch(API_URL+"/full-analysis",{
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(payload)
+body:fd
 });
+
 const data=await res.json();
 setResult(data);
-setSlide(3);
+setSlide(2);
+setMaxSlide(6);
 };
+
+React.useEffect(()=>{
+if(slide===6 && result){
+
+if(window.chart1) window.chart1.destroy();
+if(window.chart2) window.chart2.destroy();
+if(window.chart3) window.chart3.destroy();
+
+window.chart1=new Chart(document.getElementById("chart1"),{
+type:"bar",
+data:{
+labels:["Agriculture","Working Capital"],
+datasets:[{
+data:[
+result.Eligibility.Agri_Limit,
+result.Eligibility.Working_Capital_Limit
+],
+backgroundColor:["#00ff88","#00c6ff"]
+}]
+},
+options:{plugins:{legend:{display:false}}}
+});
+
+window.chart2=new Chart(document.getElementById("chart2"),{
+type:"bar",
+data:{
+labels:["Risk Score"],
+datasets:[{
+data:[result.Risk.Score],
+backgroundColor:[
+result.Risk.Score>=80?"#00ff88":
+result.Risk.Score>=60?"#ffcc00":"#ff4d4d"
+]
+}]
+},
+options:{indexAxis:"y",scales:{x:{max:100}}}
+});
+
+window.chart3=new Chart(document.getElementById("chart3"),{
+type:"radar",
+data:{
+labels:["Mismatch %","Accuracy Score"],
+datasets:[{
+data:[
+result.Mismatch_%,
+result.Accuracy_Score
+],
+backgroundColor:"rgba(0,198,255,0.3)",
+borderColor:"#00c6ff"
+}]
+}
+});
+
+}
+},[slide,result]);
 
 return(
 <div>
 
 <div className="nav">
-<button onClick={()=>setSlide(1)} className={slide===1?"active":""}>Upload</button>
-<button onClick={()=>setSlide(2)} className={slide===2?"active":""}>Consistency</button>
-<button onClick={()=>setSlide(3)} className={slide===3?"active":""}>Eligibility</button>
-<button onClick={()=>setSlide(4)} className={slide===4?"active":""}>Risk</button>
-<button onClick={()=>setSlide(5)} className={slide===5?"active":""}>Final</button>
+<button onClick={()=>changeSlide(1)} className={slide===1?"active":maxSlide<1?"locked":""}>Upload</button>
+<button onClick={()=>changeSlide(2)} className={slide===2?"active":maxSlide<2?"locked":""}>Consistency</button>
+<button onClick={()=>changeSlide(3)} className={slide===3?"active":maxSlide<3?"locked":""}>Eligibility</button>
+<button onClick={()=>changeSlide(4)} className={slide===4?"active":maxSlide<4?"locked":""}>Risk</button>
+<button onClick={()=>changeSlide(5)} className={slide===5?"active":maxSlide<5?"locked":""}>AI</button>
+<button onClick={()=>changeSlide(6)} className={slide===6?"active":maxSlide<6?"locked":""}>Analytics</button>
 </div>
 
-{/* Slide 1 */}
 {slide===1 && (
 <div className="card">
-<h3>Upload Complete Financial Set</h3>
-
+<h3>Upload Financial Documents</h3>
 <p>Balance Sheet</p>
 <input type="file" onChange={(e)=>setBS(e.target.files[0])}/>
-
 <p>P&L Statement</p>
 <input type="file" onChange={(e)=>setPL(e.target.files[0])}/>
-
 <p>Bank Statement</p>
 <input type="file" onChange={(e)=>setBank(e.target.files[0])}/>
-
-<button onClick={runFull}>Run Full Underwriting</button>
+<button onClick={runFull}>Run Underwriting</button>
 </div>
 )}
 
-{/* Slide 2 */}
-{slide===2 && full && (
+{slide===2 && result && (
 <div className="card">
-<h3>Data Consistency Dashboard</h3>
-
-<p>Declared Sales: {formatCurrency(full.Parsed_Data.Sales)}</p>
-<p>Bank Turnover: {formatCurrency(full.Parsed_Data.Bank_Turnover)}</p>
-<p>Mismatch %: {full.Cross_Verification.Turnover_Mismatch_%}%</p>
-<p>Status: {full.Cross_Verification.Verification_Status}</p>
-
-<button onClick={runEligibility}>Proceed to Eligibility</button>
+<h3>Consistency Dashboard</h3>
+<p>Declared Sales: {formatCurrency(result.Parsed_Data.Sales)}</p>
+<p>Bank Turnover: {formatCurrency(result.Parsed_Data.Bank_Turnover)}</p>
+<p>Mismatch %: {result.Mismatch_%}%</p>
+<p>Accuracy Score: {result.Accuracy_Score}%</p>
+{result.Fraud_Flags.length>0 &&
+<p className="red">Fraud Flags: {result.Fraud_Flags.join(", ")}</p>}
+<button onClick={()=>setSlide(3)}>Next</button>
 </div>
 )}
 
-{/* Slide 3 */}
 {slide===3 && result && (
 <div className="card">
-<h3>Eligibility Engine</h3>
-
-<p>🌾 Agriculture Limit: {formatCurrency(result.Agri_Eligible_Limit)}</p>
-<p>🏭 Working Capital Limit: {formatCurrency(result.Working_Capital_Limit)}</p>
-
-<button onClick={()=>setSlide(4)}>Proceed to Risk</button>
+<h3>Eligibility</h3>
+<p>🌾 Agriculture: {formatCurrency(result.Eligibility.Agri_Limit)}</p>
+<p>🏭 Working Capital: {formatCurrency(result.Eligibility.Working_Capital_Limit)}</p>
+<button onClick={()=>setSlide(4)}>Next</button>
 </div>
 )}
 
-{/* Slide 4 */}
 {slide===4 && result && (
 <div className="card">
-<h3>Risk & Fraud Intelligence</h3>
-
-<p>Risk Score: <span className={riskColor(result.Risk_Score)}>{result.Risk_Score}</span></p>
-<p>Risk Grade: {result.Risk_Grade}</p>
-<p>Banking Health: {result.Banking_Health}</p>
-<p>Decision: {result.Decision}</p>
-
-<button onClick={()=>setSlide(5)}>Generate Final Report</button>
+<h3>Risk & Decision</h3>
+<p>Risk Score: <span className={riskColor(result.Risk.Score)}>{result.Risk.Score}</span></p>
+<p>Grade: {result.Risk.Grade}</p>
+<p>Decision: {result.Risk.Decision}</p>
+<button onClick={()=>setSlide(5)}>Next</button>
 </div>
 )}
 
-{/* Slide 5 */}
 {slide===5 && result && (
 <div className="card">
-<h3>AI Underwriting Summary</h3>
-
-<p>
-The applicant shows {result.Risk_Grade} risk profile with a 
-current ratio of {result.Current_Ratio} and profit margin of {result.Profit_Margin}%.
-Banking conduct classified as {result.Banking_Health}.
-Recommended decision: {result.Decision}.
-</p>
+<h3>AI Underwriting Narrative</h3>
+<p><b>Executive:</b> {result.AI_Summary.Executive_Summary}</p>
+<p><b>Financial:</b> {result.AI_Summary.Financial_Assessment}</p>
+<p><b>Banking:</b> {result.AI_Summary.Banking_Assessment}</p>
+<p><b>Fraud:</b> {result.AI_Summary.Fraud_Observation}</p>
+<p><b>Recommendation:</b> {result.AI_Summary.Final_Recommendation}</p>
 
 <a href={API_URL+"/generate-cam/"+result.Case_ID} target="_blank">
 <button>Download CAM Report</button>
 </a>
+
+<button onClick={()=>setSlide(6)}>View Analytics</button>
+</div>
+)}
+
+{slide===6 && result && (
+<div className="card">
+<h3>Analytics Dashboard</h3>
+<canvas id="chart1" height="120"></canvas>
+<br/>
+<canvas id="chart2" height="80"></canvas>
+<br/>
+<canvas id="chart3" height="120"></canvas>
 </div>
 )}
 
