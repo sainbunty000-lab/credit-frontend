@@ -104,6 +104,14 @@ function App() {
           <p><b>Decision:</b> {result.Decision}</p>
         </div>
       )}
+<a 
+  href={API_URL + "/generate-cam/" + result.Case_ID}
+  target="_blank"
+>
+  <button style={{marginTop:"10px"}}>
+    Download CAM Report
+  </button>
+</a>
 
       {/* -------- CASE HISTORY -------- */}
       <div className="card">
