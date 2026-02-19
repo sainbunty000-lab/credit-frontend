@@ -1,21 +1,95 @@
 {
-  "name": "AI Underwriting Suite",
+  "name": "AI Underwriting Intelligence Suite",
   "short_name": "Underwriting Dhanush",
-  "description": "Enterprise Credit Underwriting Application",
+  "description": "Enterprise Credit Underwriting & Risk Analytics Platform",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0b1629",
   "theme_color": "#00bcd4",
+
   "icons": [
     {
       "src": "https://via.placeholder.com/192",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "https://via.placeholder.com/512",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "Upload Documents",
+      "short_name": "Upload",
+      "url": "/#upload",
+      "icons": [
+        {
+          "src": "https://via.placeholder.com/192",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Run Analysis",
+      "short_name": "Analyze",
+      "url": "/#analysis",
+      "icons": [
+        {
+          "src": "https://via.placeholder.com/192",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+      }
+    }
+  ],
+
+  "protocol_handlers": [
+    {
+      "protocol": "web+underwriting",
+      "url": "/?case=%s"
+    }
+  ],
+
+  "share_target": {
+    "action": "/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "documents",
+          "accept": ["application/pdf", ".xls", ".xlsx"]
+        }
+      ]
+    }
+  },
+
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+
+  "categories": [
+    "finance",
+    "business",
+    "productivity"
   ]
 }
