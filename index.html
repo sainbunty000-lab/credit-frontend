@@ -1,1 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Underwriting Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{margin:0;font-family:Arial;background:#0b1629;color:white}
+.container{max-width:1000px;margin:auto;padding:40px}
+.card{background:#16233d;padding:25px;border-radius:12px;margin-bottom:20px}
+button{padding:12px 20px;border:none;border-radius:8px;background:#00bcd4;color:white;cursor:pointer}
+input{margin:8px 0}
+.progress{height:10px;background:#333;border-radius:5px;overflow:hidden}
+.progress-bar{height:10px;background:#00e676;width:0%}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Enterprise AI Underwriting</h1>
+
+<div class="card">
+<h3>Upload Documents</h3>
+<input type="file" id="bs"><br>
+<input type="file" id="pl"><br>
+<input type="file" id="bank"><br>
+<button onclick="run()">Run Analysis</button>
+</div>
+
+<div class="card" id="result" style="display:none">
+<h3>Results</h3>
+<div id="data"></div>
+<canvas id="chart"></canvas>
+<div class="progress"><div class="progress-bar" id="conf"></div></div>
+</div>
+
+</div>
+
+<script>
+
+const API="https://credit-backend-yh78.onrender.com"
+
+async function run(){
+let bs=document.getElementById("bs").files[0]
+let pl=document.getElementById("pl").files[0]
+let bank=document.getElementById("bank").files[0]
+
+let fd=new FormData()
+fd.append("bs_file",bs)
+fd.append("pl_file",pl)
+fd.append("bank_file",bank)
+
+let res=await fetch(API+"/analyze",{method:"POST",body:fd})
+let data=await res.json()
+
+document.getElementById("result").style.display="block"
+document.getElementById("data").innerHTML=`
+<p>Case ID: ${data.Case_ID}</p>
+<p>Working Capital Limit: ₹${data.Working_Capital_Limit}</p>
+<p>Profit Margin: ${data.Profit_Margin}%</p>
+<p>Current Ratio: ${data.Current_Ratio}</p>
+<p>Mismatch: ${data["Mismatch_%"]}%</p>
+<p>Risk Score: ${data.Risk_Score}</p>
+<p>Decision: ${data.Decision}</p>
+`
+
+document.getElementById("conf").style.width=data.Parsing_Confidence+"%"
+
+new Chart(document.getElementById("chart"),{
+type:"bar",
+data:{
+labels:["WC Limit","Risk Score"],
+datasets:[{
+label:"Analysis",
+data:[data.Working_Capital_Limit,data.Risk_Score]
+}]
+}
+})
+}
+
+</script>
+</body>
+</html>
 
