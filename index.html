@@ -1,19 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Underwriting Suite</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00bcd4">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body{margin:0;font-family:Arial;background:#0b1629;color:white}
-.container{max-width:1000px;margin:auto;padding:40px}
-.card{background:#16233d;padding:25px;border-radius:12px;margin-bottom:20px}
-button{padding:12px 20px;border:none;border-radius:8px;background:#00bcd4;color:white;cursor:pointer}
-input{margin:8px 0}
-.progress{height:10px;background:#333;border-radius:5px;overflow:hidden}
-.progress-bar{height:10px;background:#00e676;width:0%}
+body{
+margin:0;
+font-family:Arial, sans-serif;
+background:#0b1629;
+color:white;
+}
+
+.container{
+max-width:1100px;
+margin:auto;
+padding:40px 20px;
+}
+
+.card{
+background:#16233d;
+padding:25px;
+border-radius:12px;
+margin-bottom:20px;
+box-shadow:0 0 20px rgba(0,0,0,0.4);
+}
+
+h1{
+margin-bottom:30px;
+}
+
+input{
+margin:10px 0;
+color:white;
+}
+
+button{
+padding:12px 22px;
+border:none;
+border-radius:8px;
+background:#00bcd4;
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+background:#0097a7;
+}
+
+.progress{
+height:10px;
+background:#333;
+border-radius:5px;
+margin-top:10px;
+overflow:hidden;
+}
+
+.progress-bar{
+height:10px;
+background:#00e676;
+width:0%;
+transition:1s;
+}
+
+.result-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:15px;
+}
+
+.result-box{
+background:#0f1e36;
+padding:15px;
+border-radius:8px;
+}
+
+.green{color:#00e676;}
+.orange{color:orange;}
+.red{color:#ff5252;}
 </style>
 </head>
+
 <body>
 
 <div class="container">
@@ -21,65 +96,140 @@ input{margin:8px 0}
 <h1>Enterprise AI Underwriting</h1>
 
 <div class="card">
-<h3>Upload Documents</h3>
+<h3>Upload Financial Documents</h3>
+
+<label>Balance Sheet</label><br>
 <input type="file" id="bs"><br>
+
+<label>P&L Statement</label><br>
 <input type="file" id="pl"><br>
+
+<label>Bank Statement</label><br>
 <input type="file" id="bank"><br>
-<button onclick="run()">Run Analysis</button>
+
+<button onclick="runAnalysis()">Run Analysis</button>
 </div>
 
-<div class="card" id="result" style="display:none">
-<h3>Results</h3>
-<div id="data"></div>
-<canvas id="chart"></canvas>
-<div class="progress"><div class="progress-bar" id="conf"></div></div>
+<div class="card" id="results" style="display:none">
+
+<h3>Underwriting Dashboard</h3>
+
+<div class="result-grid" id="resultData"></div>
+
+<canvas id="chart" height="120"></canvas>
+
+<h4>Parsing Confidence</h4>
+<div class="progress">
+<div class="progress-bar" id="confidenceBar"></div>
+</div>
+
 </div>
 
 </div>
 
 <script>
 
-const API="https://credit-backend-yh78.onrender.com"
+const API_URL="https://credit-backend-yh78.onrender.com";
 
-async function run(){
-let bs=document.getElementById("bs").files[0]
-let pl=document.getElementById("pl").files[0]
-let bank=document.getElementById("bank").files[0]
+function riskColor(score){
+if(score>=75) return "green";
+if(score>=50) return "orange";
+return "red";
+}
 
-let fd=new FormData()
-fd.append("bs_file",bs)
-fd.append("pl_file",pl)
-fd.append("bank_file",bank)
+function formatCurrency(num){
+return "₹"+Number(num).toLocaleString("en-IN");
+}
 
-let res=await fetch(API+"/analyze",{method:"POST",body:fd})
-let data=await res.json()
+async function runAnalysis(){
 
-document.getElementById("result").style.display="block"
-document.getElementById("data").innerHTML=`
-<p>Case ID: ${data.Case_ID}</p>
-<p>Working Capital Limit: ₹${data.Working_Capital_Limit}</p>
-<p>Profit Margin: ${data.Profit_Margin}%</p>
-<p>Current Ratio: ${data.Current_Ratio}</p>
-<p>Mismatch: ${data["Mismatch_%"]}%</p>
-<p>Risk Score: ${data.Risk_Score}</p>
-<p>Decision: ${data.Decision}</p>
-`
+let bs=document.getElementById("bs").files[0];
+let pl=document.getElementById("pl").files[0];
+let bank=document.getElementById("bank").files[0];
 
-document.getElementById("conf").style.width=data.Parsing_Confidence+"%"
+if(!bs || !pl || !bank){
+alert("Please upload all 3 documents");
+return;
+}
+
+let fd=new FormData();
+fd.append("bs_file",bs);
+fd.append("pl_file",pl);
+fd.append("bank_file",bank);
+
+let res=await fetch(API_URL+"/analyze",{
+method:"POST",
+body:fd
+});
+
+let data=await res.json();
+
+document.getElementById("results").style.display="block";
+
+document.getElementById("resultData").innerHTML=`
+<div class="result-box">
+<strong>Case ID</strong><br>${data.Case_ID}
+</div>
+
+<div class="result-box">
+<strong>Working Capital Limit</strong><br>${formatCurrency(data.Working_Capital_Limit)}
+</div>
+
+<div class="result-box">
+<strong>Profit Margin</strong><br>${data.Profit_Margin}%
+</div>
+
+<div class="result-box">
+<strong>Current Ratio</strong><br>${data.Current_Ratio}
+</div>
+
+<div class="result-box">
+<strong>Bank Turnover</strong><br>${formatCurrency(data.Bank_Turnover)}
+</div>
+
+<div class="result-box">
+<strong>Mismatch %</strong><br>${data["Mismatch_%"]}%
+</div>
+
+<div class="result-box">
+<strong>Risk Score</strong><br>
+<span class="${riskColor(data.Risk_Score)}">${data.Risk_Score}</span>
+</div>
+
+<div class="result-box">
+<strong>Decision</strong><br>${data.Decision}
+</div>
+`;
+
+document.getElementById("confidenceBar").style.width=data.Parsing_Confidence+"%";
 
 new Chart(document.getElementById("chart"),{
 type:"bar",
 data:{
-labels:["WC Limit","Risk Score"],
+labels:["WC Limit","Risk Score","Profit Margin"],
 datasets:[{
 label:"Analysis",
-data:[data.Working_Capital_Limit,data.Risk_Score]
+data:[
+data.Working_Capital_Limit,
+data.Risk_Score,
+data.Profit_Margin
+],
+backgroundColor:[
+"#00bcd4",
+"#ff9800",
+"#4caf50"
+]
 }]
 }
-})
+});
+
+}
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js");
 }
 
 </script>
+
 </body>
 </html>
-
