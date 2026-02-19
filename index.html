@@ -183,8 +183,22 @@ return(
 <h3>Credit Analysis Report</h3>
 
 <p><b>Case ID:</b> {result.Case_ID}</p>
-<p><b>Final Eligible Limit:</b> {formatCurrency(result.Final_Limit)}</p>
-<p><b>Risk Score:</b> <span className={riskColor(result.Risk_Score)}>{result.Risk_Score}</span></p>
+
+<hr/>
+
+<h4>Agriculture Lending Eligibility</h4>
+<p><b>Eligible Limit:</b> {formatCurrency(result.Agri_Eligible_Limit)}</p>
+
+<hr/>
+
+<h4>Working Capital Eligibility</h4>
+<p><b>Eligible Limit:</b> {formatCurrency(result.Working_Capital_Limit)}</p>
+
+<hr/>
+
+<p><b>Risk Score:</b> <span className={riskColor(result.Risk_Score)}>
+{result.Risk_Score}</span></p>
+
 <p><b>Risk Grade:</b> {result.Risk_Grade}</p>
 <p><b>Decision:</b> {result.Decision}</p>
 
@@ -206,6 +220,7 @@ return(
 
 </div>
 )}
+
 
 {/* CASE HISTORY */}
 <div className="card">
