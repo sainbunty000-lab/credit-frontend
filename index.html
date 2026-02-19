@@ -2,133 +2,83 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Underwriting Stable Version</title>
-
+<title>AI Underwriting Suite</title>
 <style>
-body{
-    font-family:Arial;
-    background:#0b1629;
-    color:white;
-    margin:0;
-}
-.container{
-    max-width:900px;
-    margin:auto;
-    padding:40px;
-}
-.card{
-    background:#16233d;
-    padding:20px;
-    border-radius:8px;
-    margin-bottom:20px;
-}
-button{
-    padding:10px 20px;
-    border:none;
-    background:#00bcd4;
-    color:white;
-    cursor:pointer;
-    border-radius:6px;
-}
-.result{
-    background:#0f1e36;
-    padding:15px;
-    margin-top:15px;
-    border-radius:6px;
-}
-.error{
-    color:red;
-}
-.success{
-    color:#00e676;
-}
+body{font-family:Arial;background:#0b1629;color:white;text-align:center;padding:40px}
+.card{background:#16233d;padding:20px;border-radius:8px;margin:auto;max-width:600px}
+button{padding:10px 20px;background:#00bcd4;border:none;color:white;border-radius:6px}
 </style>
 </head>
-
 <body>
 
-<div class="container">
-
-<h2>AI Underwriting – Stable Test Version</h2>
+<h2>AI Underwriting Engine</h2>
 
 <div class="card">
-    <label>Balance Sheet</label><br>
-    <input type="file" id="bs"><br><br>
-
-    <label>P&L</label><br>
-    <input type="file" id="pl"><br><br>
-
-    <label>Bank Statement</label><br>
-    <input type="file" id="bank"><br><br>
-
-    <button id="runBtn">Run Analysis</button>
-</div>
-
-<div id="output" class="card result"></div>
-
+<input type="file" id="bs"><br><br>
+<input type="file" id="pl"><br><br>
+<input type="file" id="bank"><br><br>
+<button onclick="runAnalysis()">Run Analysis</button>
+<div id="result"></div>
 </div>
 
 <script>
-
 const API_URL = "https://credit-backend-yh78.onrender.com";
 
-document.getElementById("runBtn").addEventListener("click", async function(){
+async function wakeBackend(){
+    try{
+        await fetch(API_URL + "/health");
+    }catch(e){}
+}
 
-    const output = document.getElementById("output");
-    output.innerHTML = "Running analysis...";
-
-    const bs = document.getElementById("bs").files[0];
-    const pl = document.getElementById("pl").files[0];
-    const bank = document.getElementById("bank").files[0];
-
-    if(!bs || !pl || !bank){
-        output.innerHTML = "<span class='error'>Please upload all 3 files.</span>";
-        return;
+async function safeFetch(url, options, retries=3){
+    try{
+        return await fetch(url, options);
+    }catch(e){
+        if(retries>0){
+            await new Promise(r=>setTimeout(r,5000));
+            return safeFetch(url, options, retries-1);
+        }
+        throw e;
     }
+}
+
+async function runAnalysis(){
+
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "Waking server...";
+
+    await wakeBackend();
+
+    resultDiv.innerHTML = "Running analysis...";
+
+    const fd = new FormData();
+    fd.append("bs_file", document.getElementById("bs").files[0]);
+    fd.append("pl_file", document.getElementById("pl").files[0]);
+    fd.append("bank_file", document.getElementById("bank").files[0]);
 
     try{
-
-        const fd = new FormData();
-        fd.append("bs_file", bs);
-        fd.append("pl_file", pl);
-        fd.append("bank_file", bank);
-
-        console.log("Sending request...");
-
-        const response = await fetch(API_URL + "/analyze", {
-            method: "POST",
-            body: fd
+        const res = await safeFetch(API_URL + "/analyze", {
+            method:"POST",
+            body:fd
         });
 
-        console.log("Status:", response.status);
+        const data = await res.json();
 
-        if(!response.ok){
-            const text = await response.text();
-            output.innerHTML = "<span class='error'>Server Error: " + text + "</span>";
-            return;
-        }
-
-        const data = await response.json();
-        console.log("Response:", data);
-
-        output.innerHTML = `
-            <span class='success'>Analysis Successful</span><br><br>
-            Case ID: ${data.Case_ID}<br>
-            Bank Turnover: ₹${data.Bank_Turnover}<br>
-            Working Capital Limit: ₹${data.Working_Capital_Limit}<br>
-            Agri Limit: ₹${data.Agri_Limit}<br>
-            Risk Score: ${data.Risk_Score}<br>
-            Decision: ${data.Decision}<br>
-            Parsing Confidence: ${data.Parsing_Confidence}%
+        resultDiv.innerHTML = `
+        <hr>
+        Case ID: ${data.Case_ID}<br>
+        Bank Turnover: ₹${data.Bank_Turnover}<br>
+        WC Limit: ₹${data.Working_Capital_Limit}<br>
+        Agri Limit: ₹${data.Agri_Limit}<br>
+        Risk Score: ${data.Risk_Score}<br>
+        Decision: ${data.Decision}<br>
+        Confidence: ${data.Parsing_Confidence}%<br>
+        Explanation: ${data.AI_Explanation}
         `;
-
-    }catch(error){
-        console.error("Fetch Error:", error);
-        output.innerHTML = "<span class='error'>Network Error. Check console.</span>";
+    }catch(e){
+        resultDiv.innerHTML = "Server unreachable. Try again in 30 seconds.";
     }
-
-});
-
+}
 </script>
 
 </body>
