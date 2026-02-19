@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Credit Intelligence Dashboard</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; background: #f4f6f9; margin: 0; }
+    header { background: #0a3d62; color: white; padding: 15px; text-align: center; }
+    .container { padding: 20px; }
+    input { padding: 8px; margin: 5px; width: 180px; }
+    button { padding: 10px 15px; background: #0a3d62; color: white; border: none; cursor: pointer; }
+    .card { background: white; padding: 15px; margin: 10px 0; border-radius: 6px; }
+  </style>
+</head>
+
+<body>
+<header>
+  <h2>Credit Underwriting Dashboard</h2>
+</header>
+
+<div id="root" class="container"></div>
+
+<script type="text/babel">
+
+const API_URL = "https://your-backend-url.onrender.com/analyze";
+
+function App() {
+  const [form, setForm] = React.useState({
+    sales: "", pat: "", dep: "", stock: "", debtors: "",
+    creditors: "", loan_req: "", emi: "", undocumented: "", bounce: ""
+  });
+
+  const [result, setResult] = React.useState(null);
+
+  const handleChange = e => {
+    setForm({...form, [e.target.name]: e.target.value});
+  };
+
+  const handleSubmit = async () => {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(form).map(([k,v]) => [k, Number(v)])
+        )
+      )
+    });
+
+    const data = await response.json();
+    setResult(data);
+
+    setTimeout(() => drawChart(data), 100);
+  };
+
+  const drawChart = (data) => {
+    const ctx = document.getElementById("chart");
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: ["Income Model", "Turnover Model", "MPBF", "Final Limit"],
+        datasets: [{
+          label: "Eligibility Comparison",
+          data: [
+            data.Income_Model,
+            data.Turnover_Model,
+            data.MPBF,
+            data.Final_Limit
+          ]
+        }]
+      }
+    });
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <h3>Financial Inputs</h3>
+        {Object.keys(form).map(key => (
+          <input key={key} name={key} placeholder={key} onChange={handleChange} />
+        ))}
+        <br />
+        <button onClick={handleSubmit}>Analyze</button>
+      </div>
+
+      {result && (
+        <div className="card">
+          <h3>Results</h3>
+          <p><b>Final Limit:</b> ₹{result.Final_Limit}</p>
+          <p><b>Risk Score:</b> {result.Risk_Score}</p>
+          <p><b>Decision:</b> {result.Decision}</p>
+          <canvas id="chart"></canvas>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+</script>
+</body>
+</html>
