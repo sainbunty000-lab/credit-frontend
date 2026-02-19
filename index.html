@@ -2,23 +2,91 @@
 <html>
 <head>
   <title>Credit Intelligence Dashboard</title>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body { font-family: Arial; background: #f4f6f9; margin: 0; }
-    header { background: #0a3d62; color: white; padding: 15px; text-align: center; }
-    .container { padding: 20px; }
-    input { padding: 8px; margin: 5px; width: 180px; }
-    button { padding: 10px 15px; background: #0a3d62; color: white; border: none; cursor: pointer; }
-    .card { background: white; padding: 15px; margin: 10px 0; border-radius: 6px; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+    }
+
+    header {
+      background: #0a3d62;
+      color: white;
+      padding: 18px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+    }
+
+    button {
+      background: #0a3d62;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #082c45;
+    }
+
+    .result-value {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .risk-low { color: green; }
+    .risk-medium { color: orange; }
+    .risk-high { color: red; }
+
+    .loading {
+      text-align: center;
+      font-weight: bold;
+      color: #0a3d62;
+    }
   </style>
 </head>
 
 <body>
+
 <header>
-  <h2>Credit Underwriting Dashboard</h2>
+  Credit Underwriting Intelligence Suite
 </header>
 
 <div id="root" class="container"></div>
@@ -34,12 +102,32 @@ function App() {
   });
 
   const [result, setResult] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const labels = {
+    sales: "Annual Sales",
+    pat: "Net Profit (PAT)",
+    dep: "Depreciation",
+    stock: "Inventory",
+    debtors: "Sundry Debtors",
+    creditors: "Sundry Creditors",
+    loan_req: "Loan Requested",
+    emi: "Existing EMI",
+    undocumented: "Undocumented Income",
+    bounce: "Cheque Bounces"
+  };
 
   const handleChange = e => {
     setForm({...form, [e.target.name]: e.target.value});
   };
 
+  const formatCurrency = (num) => {
+    return "₹" + Number(num).toLocaleString("en-IN");
+  };
+
   const handleSubmit = async () => {
+    setLoading(true);
+
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,6 +140,7 @@ function App() {
 
     const data = await response.json();
     setResult(data);
+    setLoading(false);
 
     setTimeout(() => drawChart(data), 100);
   };
@@ -70,32 +159,63 @@ function App() {
             data.Turnover_Model,
             data.MPBF,
             data.Final_Limit
-          ]
+          ],
+          backgroundColor: ["#2980b9","#27ae60","#f39c12","#8e44ad"]
         }]
       }
     });
   };
 
+  const riskClass = (score) => {
+    if(score >= 75) return "risk-low";
+    if(score >= 50) return "risk-medium";
+    return "risk-high";
+  };
+
   return (
     <div>
+
       <div className="card">
         <h3>Financial Inputs</h3>
-        {Object.keys(form).map(key => (
-          <input key={key} name={key} placeholder={key} onChange={handleChange} />
-        ))}
+
+        <div className="grid">
+          {Object.keys(form).map(key => (
+            <div key={key}>
+              <label>{labels[key]}</label>
+              <input name={key} onChange={handleChange} />
+            </div>
+          ))}
+        </div>
+
         <br />
-        <button onClick={handleSubmit}>Analyze</button>
+        <button onClick={handleSubmit}>Run Credit Analysis</button>
       </div>
+
+      {loading && <div className="loading">Analyzing Financial Data...</div>}
 
       {result && (
         <div className="card">
-          <h3>Results</h3>
-          <p><b>Final Limit:</b> ₹{result.Final_Limit}</p>
-          <p><b>Risk Score:</b> {result.Risk_Score}</p>
-          <p><b>Decision:</b> {result.Decision}</p>
+          <h3>Eligibility Results</h3>
+
+          <p className="result-value">
+            Final Eligible Limit: {formatCurrency(result.Final_Limit)}
+          </p>
+
+          <p>
+            Risk Score:
+            <span className={riskClass(result.Risk_Score)}>
+              {" "}{result.Risk_Score}
+            </span>
+          </p>
+
+          <p>
+            Decision: <b>{result.Decision}</b>
+          </p>
+
           <canvas id="chart"></canvas>
         </div>
       )}
+
     </div>
   );
 }
@@ -103,5 +223,6 @@ function App() {
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 </script>
+
 </body>
 </html>
