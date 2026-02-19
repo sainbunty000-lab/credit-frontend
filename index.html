@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8">
 <title>AI Underwriting Suite</title>
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
 <style>
 body{
@@ -18,7 +17,7 @@ color:white;
 
 .container{
 padding:40px;
-max-width:900px;
+max-width:800px;
 margin:auto;
 }
 
@@ -47,21 +46,31 @@ font-weight:bold;
 
 <div id="root"></div>
 
-<script type="text/babel">
+<script>
 
 const API_URL="https://credit-backend-yh78.onrender.com";
 
+const e = React.createElement;
+
 function App(){
 
-const [bs,setBS]=React.useState(null);
-const [pl,setPL]=React.useState(null);
-const [bank,setBank]=React.useState(null);
-const [result,setResult]=React.useState(null);
-const [error,setError]=React.useState(null);
+const [bs,setBS] = React.useState(null);
+const [pl,setPL] = React.useState(null);
+const [bank,setBank] = React.useState(null);
+const [result,setResult] = React.useState(null);
+const [error,setError] = React.useState(null);
 
-const formatCurrency=(n)=>"₹"+Number(n||0).toLocaleString("en-IN");
+function formatCurrency(n){
+return "₹"+Number(n||0).toLocaleString("en-IN");
+}
 
-const run=async()=>{
+function riskColor(score){
+if(score>=80) return "green";
+if(score>=60) return "orange";
+return "red";
+}
+
+async function run(){
 
 setError(null);
 
@@ -71,6 +80,7 @@ return;
 }
 
 try{
+
 const fd=new FormData();
 fd.append("bs_file",bs);
 fd.append("pl_file",pl);
@@ -78,66 +88,55 @@ fd.append("bank_file",bank);
 
 const res=await fetch(API_URL+"/full-analysis",{method:"POST",body:fd});
 
-if(!res.ok){
-throw new Error("Backend error");
-}
+if(!res.ok) throw new Error("Backend error");
 
 const data=await res.json();
 setResult(data);
 
 }catch(err){
 console.log(err);
-setError("Something went wrong. Check backend or console.");
+setError("Error connecting to backend.");
 }
-};
 
-return(
-<div className="container">
+}
 
-<h2>Enterprise Underwriting</h2>
+return e("div",{className:"container"},
 
-<div className="card">
-<p>Balance Sheet</p>
-<input type="file" onChange={(e)=>setBS(e.target.files[0])}/>
+e("h2",null,"Enterprise Underwriting"),
 
-<p>P&L</p>
-<input type="file" onChange={(e)=>setPL(e.target.files[0])}/>
+e("div",{className:"card"},
+e("p",null,"Balance Sheet"),
+e("input",{type:"file",onChange:(ev)=>setBS(ev.target.files[0])}),
+e("p",null,"P&L"),
+e("input",{type:"file",onChange:(ev)=>setPL(ev.target.files[0])}),
+e("p",null,"Bank Statement"),
+e("input",{type:"file",onChange:(ev)=>setBank(ev.target.files[0])}),
+e("br"),
+e("br"),
+e("button",{onClick:run},"Run Analysis")
+),
 
-<p>Bank Statement</p>
-<input type="file" onChange={(e)=>setBank(e.target.files[0])}/>
+error && e("div",{className:"card red"},error),
 
-<br/><br/>
-<button onClick={run}>Run Analysis</button>
-</div>
+result && e("div",{className:"card"},
+e("h3",null,"Results"),
+e("p",null,"Bank Turnover: "+formatCurrency(result.Bank_Turnover)),
+e("p",null,"Working Capital Limit: "+formatCurrency(result.Working_Capital_Limit)),
+e("p",null,
+"Risk Score: ",
+e("span",{className:riskColor(result.Risk_Score)}," "+result.Risk_Score)
+),
+e("p",null,"Decision: "+result.Decision),
+e("p",null,"Parsing Confidence: "+result.Parsing_Confidence+"%")
+)
 
-{error && <div className="card red">{error}</div>}
-
-{result && (
-<div className="card">
-
-<h3>Results</h3>
-
-<p>Bank Turnover: {formatCurrency(result.Bank_Turnover)}</p>
-<p>Working Capital Limit: {formatCurrency(result.Working_Capital_Limit)}</p>
-<p>Risk Score:
-<span className={
-result.Risk_Score>=80?"green":
-result.Risk_Score>=60?"orange":"red"
-}>
- {result.Risk_Score}
-</span>
-</p>
-<p>Decision: {result.Decision}</p>
-<p>Parsing Confidence: {result.Parsing_Confidence}%</p>
-
-</div>
-)}
-
-</div>
 );
+
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(
+React.createElement(App)
+);
 
 </script>
 
