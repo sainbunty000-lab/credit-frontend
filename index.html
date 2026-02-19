@@ -1,3 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Credit Underwriting Suite</title>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+    }
+
+    header {
+      background: #0a3d62;
+      color: white;
+      padding: 18px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+    }
+
+    button {
+      background: #0a3d62;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #082c45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: #0a3d62;
+      color: white;
+    }
+
+    .green { color: green; font-weight: bold; }
+    .orange { color: orange; font-weight: bold; }
+    .red { color: red; font-weight: bold; }
+
+    .loading {
+      text-align: center;
+      font-weight: bold;
+      color: #0a3d62;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  Credit Underwriting Intelligence Suite
+</header>
+
+<div id="root" class="container"></div>
+
+<script type="text/babel">
+
 const API_URL = "https://credit-backend-yh78.onrender.com";
 
 function App() {
@@ -69,7 +176,6 @@ function App() {
   return (
     <div>
 
-      {/* -------- INPUT FORM -------- */}
       <div className="card">
         <h3>Financial Inputs</h3>
 
@@ -86,39 +192,39 @@ function App() {
         <button onClick={handleSubmit}>Run Credit Analysis</button>
       </div>
 
-      {loading && <div className="loading">Analyzing...</div>}
+      {loading && <div className="loading">Analyzing Financial Data...</div>}
 
-      {/* -------- RESULT -------- */}
       {result && (
         <div className="card">
           <h3>Latest Analysis</h3>
 
           <p><b>Case ID:</b> {result.Case_ID}</p>
           <p><b>Final Limit:</b> {formatCurrency(result.Final_Limit)}</p>
+
           <p>
             <b>Risk Score:</b>{" "}
-            <span style={{color: riskColor(result.Risk_Score)}}>
+            <span className={riskColor(result.Risk_Score)}>
               {result.Risk_Score}
             </span>
           </p>
+
           <p><b>Decision:</b> {result.Decision}</p>
+
+          <a 
+            href={API_URL + "/generate-cam/" + result.Case_ID}
+            target="_blank"
+          >
+            <button style={{marginTop:"10px"}}>
+              Download CAM Report
+            </button>
+          </a>
         </div>
       )}
 
-<a 
-  href={API_URL + "/generate-cam/" + result.Case_ID}
-  target="_blank"
->
-  <button style={{marginTop:"10px"}}>
-    Download CAM Report
-  </button>
-</a>
-
-      {/* -------- CASE HISTORY -------- */}
       <div className="card">
         <h3>Case History</h3>
 
-        <table width="100%" border="1" cellPadding="6">
+        <table>
           <thead>
             <tr>
               <th>Date</th>
@@ -134,7 +240,7 @@ function App() {
                 <td>{c.Created_At}</td>
                 <td>{c.Case_ID.substring(0,8)}</td>
                 <td>{formatCurrency(c.Final_Limit)}</td>
-                <td style={{color: riskColor(c.Risk_Score)}}>
+                <td className={riskColor(c.Risk_Score)}>
                   {c.Risk_Score}
                 </td>
                 <td>{c.Decision}</td>
@@ -142,7 +248,6 @@ function App() {
             ))}
           </tbody>
         </table>
-
       </div>
 
     </div>
@@ -150,3 +255,8 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+</script>
+
+</body>
+</html>
