@@ -13,24 +13,24 @@ body{
     margin:0;
     font-family:Segoe UI;
     background:#0f172a;
-    color:#e2e8f0;
+    color:white;
 }
 header{
-    background:linear-gradient(90deg,#0ea5e9,#22c55e);
-    padding:18px;
+    background:linear-gradient(90deg,#1e40af,#2563eb);
+    padding:20px;
     text-align:center;
     font-size:22px;
     font-weight:bold;
 }
 .container{
-    max-width:1100px;
+    max-width:1200px;
     margin:auto;
     padding:20px;
 }
 .card{
     background:#1e293b;
     padding:20px;
-    border-radius:10px;
+    border-radius:12px;
     margin-bottom:20px;
 }
 input{
@@ -41,193 +41,213 @@ input{
     border:none;
 }
 button{
-    background:#0ea5e9;
+    background:#22c55e;
     color:white;
     border:none;
-    padding:10px 16px;
+    padding:12px;
     border-radius:6px;
     font-weight:bold;
     cursor:pointer;
-    margin-top:10px;
 }
-button:hover{
-    background:#0284c7;
+button:hover{background:#16a34a}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
 }
-.slide{ display:none; }
-.slide.active{ display:block; }
-
+.metric{
+    background:#0f172a;
+    padding:15px;
+    border-radius:8px;
+    text-align:center;
+}
+.low{color:#22c55e}
+.moderate{color:#facc15}
+.high{color:#ef4444}
 .loader{
+    display:none;
+    margin:auto;
     border:6px solid #334155;
-    border-top:6px solid #0ea5e9;
+    border-top:6px solid #22c55e;
     border-radius:50%;
     width:60px;
     height:60px;
     animation:spin 1s linear infinite;
-    margin:auto;
 }
-@keyframes spin{
-    0%{transform:rotate(0deg);}
-    100%{transform:rotate(360deg);}
-}
-.metric{
-    margin:8px 0;
-}
-canvas{
-    background:white;
-    border-radius:8px;
-    padding:10px;
-}
-.risk-low{color:#22c55e;}
-.risk-mid{color:#f59e0b;}
-.risk-high{color:#ef4444;}
+@keyframes spin{100%{transform:rotate(360deg)}}
+canvas{background:#0f172a;border-radius:10px;padding:10px}
 </style>
 </head>
 
 <body>
 
-<header>🏦 Agri / WC Calculator</header>
+<header>Agri / WC Calculator – Financial Analytics Dashboard</header>
 
 <div class="container">
 
-<!-- SLIDE 1 -->
-<div class="slide active" id="slide1">
 <div class="card">
-<h3>Upload Financial Documents</h3>
-<p>Balance Sheet & P&L Mandatory | Bank Optional</p>
-
+<h3>Upload Financial Statements</h3>
 <input type="file" id="bs">
 <input type="file" id="pl">
-<input type="file" id="bank">
-
 <button onclick="runAnalysis()">Run Analysis</button>
 </div>
+
+<div class="loader" id="loader"></div>
+
+<div id="dashboard" style="display:none">
+
+<div class="grid">
+
+<div class="metric">
+<h4>Risk Score</h4>
+<canvas id="riskGauge"></canvas>
+<p id="riskClass"></p>
 </div>
 
-<!-- SLIDE 2 -->
-<div class="slide" id="slide2">
+<div class="metric">
+<h4>Liquidity Ratio</h4>
+<h2 id="cr"></h2>
+</div>
+
+<div class="metric">
+<h4>DSCR</h4>
+<h2 id="dscr"></h2>
+</div>
+
+</div>
+
 <div class="card">
-<h3>Processing Financial Data...</h3>
-<div class="loader"></div>
-</div>
+<h3>Funding Eligibility Overview</h3>
+<canvas id="fundingChart"></canvas>
 </div>
 
-<!-- SLIDE 3 -->
-<div class="slide" id="slide3">
 <div class="card">
-<h3>Financial Dashboard</h3>
-<div id="results"></div>
-
-<canvas id="financeChart" height="120"></canvas>
-
-<button onclick="downloadCAM()">Download CAM PDF</button>
-<button onclick="resetApp()">New Case</button>
+<h3>Financial Strength Radar</h3>
+<canvas id="radarChart"></canvas>
 </div>
+
+<div class="card">
+<h3>AI Credit Memo</h3>
+<p id="memo"></p>
+</div>
+
+<div class="card">
+<button onclick="downloadCAM()">Download CAM Report</button>
+</div>
+
 </div>
 
 </div>
 
 <script>
 
-const API_URL = "https://credit-backend-production-7c9a.up.railway.app";
+const API_URL = "https://YOUR-RAILWAY-DOMAIN.up.railway.app";
 
-let caseData = null;
-
-function showSlide(id){
-    document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
+let result;
 
 async function runAnalysis(){
 
     const bs = document.getElementById("bs").files[0];
     const pl = document.getElementById("pl").files[0];
-    const bank = document.getElementById("bank").files[0];
 
     if(!bs || !pl){
-        alert("Balance Sheet and P&L are mandatory.");
+        alert("Balance Sheet and P&L required");
         return;
     }
-
-    showSlide("slide2");
 
     const fd = new FormData();
     fd.append("bs_file", bs);
     fd.append("pl_file", pl);
-    if(bank) fd.append("bank_file", bank);
 
-    const res = await fetch(API_URL + "/analyze", {
+    document.getElementById("loader").style.display="block";
+
+    const res = await fetch(API_URL + "/analyze",{
         method:"POST",
         body:fd
     });
 
-    const data = await res.json();
-    caseData = data;
+    result = await res.json();
 
-    buildDashboard(data);
-    showSlide("slide3");
+    document.getElementById("loader").style.display="none";
+    document.getElementById("dashboard").style.display="block";
+
+    displayResults(result);
 }
 
-function buildDashboard(d){
+function displayResults(data){
 
-    let riskClass = "risk-low";
-    if(d.Risk_Score < 60) riskClass = "risk-high";
-    else if(d.Risk_Score < 75) riskClass = "risk-mid";
+    const m = data.Metrics;
 
-    document.getElementById("results").innerHTML = `
-        <div class="metric">Sales: ₹${d.Sales}</div>
-        <div class="metric">NWC: ₹${d.NWC}</div>
-        <div class="metric">MPBF: ₹${d.MPBF}</div>
-        <div class="metric">Working Capital: ₹${d.Working_Capital_Limit}</div>
-        <div class="metric">Agri Limit: ₹${d.Agri_Limit}</div>
-        <div class="metric">DSCR: ${d.DSCR}</div>
-        <div class="metric ${riskClass}">Risk Score: ${d.Risk_Score}</div>
-        <hr>
-        <div>${d.Memo}</div>
-    `;
+    // Text Metrics
+    document.getElementById("cr").innerText = m.Current_Ratio.toFixed(2);
+    document.getElementById("dscr").innerText = m.DSCR.toFixed(2);
+    document.getElementById("memo").innerText = data.AI_Narrative;
 
-    new Chart(document.getElementById("financeChart"),{
+    document.getElementById("riskClass").innerText = data.Risk_Class;
+    document.getElementById("riskClass").className =
+        data.Risk_Class==="Low Risk"?"low":
+        data.Risk_Class==="Moderate Risk"?"moderate":"high";
+
+    // Risk Gauge (Doughnut)
+    new Chart(document.getElementById("riskGauge"),{
+        type:"doughnut",
+        data:{
+            labels:["Score","Remaining"],
+            datasets:[{
+                data:[data.Risk_Score,100-data.Risk_Score],
+                backgroundColor:["#22c55e","#334155"]
+            }]
+        },
+        options:{
+            plugins:{legend:{display:false}},
+            cutout:"70%"
+        }
+    });
+
+    // Funding Chart
+    new Chart(document.getElementById("fundingChart"),{
         type:"bar",
         data:{
-            labels:["Sales","MPBF","WC","Agri"],
+            labels:["MPBF","WC Limit","Agri Limit","NWC"],
             datasets:[{
                 data:[
-                    d.Sales,
-                    d.MPBF,
-                    d.Working_Capital_Limit,
-                    d.Agri_Limit
+                    m.MPBF,
+                    m.WC_Limit,
+                    m.Agri_Limit,
+                    m.NWC
                 ],
-                backgroundColor:["#0ea5e9","#22c55e","#f59e0b","#ef4444"]
+                backgroundColor:["#3b82f6","#22c55e","#f59e0b","#ef4444"]
             }]
         },
         options:{plugins:{legend:{display:false}}}
     });
+
+    // Radar Chart
+    new Chart(document.getElementById("radarChart"),{
+        type:"radar",
+        data:{
+            labels:["Liquidity","Profitability","Leverage","Repayment"],
+            datasets:[{
+                data:[
+                    m.Current_Ratio,
+                    m.EBITDA/100000,
+                    m.NWC/100000,
+                    m.DSCR
+                ],
+                backgroundColor:"rgba(59,130,246,0.4)",
+                borderColor:"#3b82f6"
+            }]
+        }
+    });
+
 }
 
 function downloadCAM(){
-
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
-    doc.setFontSize(16);
     doc.text("Agri / WC Calculator - Credit Appraisal Memo",20,20);
-
-    doc.setFontSize(12);
-    doc.text(`Case ID: ${caseData.Case_ID}`,20,40);
-    doc.text(`Sales: ₹${caseData.Sales}`,20,50);
-    doc.text(`MPBF: ₹${caseData.MPBF}`,20,60);
-    doc.text(`Working Capital: ₹${caseData.Working_Capital_Limit}`,20,70);
-    doc.text(`Agri Limit: ₹${caseData.Agri_Limit}`,20,80);
-    doc.text(`DSCR: ${caseData.DSCR}`,20,90);
-    doc.text(`Risk Score: ${caseData.Risk_Score}`,20,100);
-
-    doc.text("Assessment Summary:",20,120);
-    doc.text(caseData.Memo,20,130);
-
-    doc.save("Agri_WC_CAM.pdf");
-}
-
-function resetApp(){
-    location.reload();
+    doc.text(result.AI_Narrative,20,40,{maxWidth:170});
+    doc.save("CAM_Report.pdf");
 }
 
 </script>
