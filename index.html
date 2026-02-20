@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body{
@@ -16,14 +15,14 @@ body{
     color:white;
 }
 header{
-    background:linear-gradient(90deg,#1e40af,#2563eb);
+    background:#1e40af;
     padding:20px;
     text-align:center;
     font-size:22px;
     font-weight:bold;
 }
 .container{
-    max-width:1200px;
+    max-width:1000px;
     margin:auto;
     padding:20px;
 }
@@ -36,7 +35,7 @@ header{
 input{
     width:100%;
     padding:10px;
-    margin:8px 0;
+    margin:10px 0;
     border-radius:6px;
     border:none;
 }
@@ -49,21 +48,9 @@ button{
     font-weight:bold;
     cursor:pointer;
 }
-button:hover{background:#16a34a}
-.grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-    gap:20px;
+button:hover{
+    background:#16a34a;
 }
-.metric{
-    background:#0f172a;
-    padding:15px;
-    border-radius:8px;
-    text-align:center;
-}
-.low{color:#22c55e}
-.moderate{color:#facc15}
-.high{color:#ef4444}
 .loader{
     display:none;
     margin:auto;
@@ -74,19 +61,28 @@ button:hover{background:#16a34a}
     height:60px;
     animation:spin 1s linear infinite;
 }
-@keyframes spin{100%{transform:rotate(360deg)}}
-canvas{background:#0f172a;border-radius:10px;padding:10px}
+@keyframes spin{
+    100%{transform:rotate(360deg)}
+}
+canvas{
+    background:#0f172a;
+    border-radius:10px;
+    padding:10px;
+}
+.low{color:#22c55e}
+.moderate{color:#facc15}
+.high{color:#ef4444}
 </style>
 </head>
 
 <body>
 
-<header>Agri / WC Calculator – Financial Analytics Dashboard</header>
+<header>Agri / WC Calculator</header>
 
 <div class="container">
 
 <div class="card">
-<h3>Upload Financial Statements</h3>
+<h3>Upload Financial Files</h3>
 <input type="file" id="bs">
 <input type="file" id="pl">
 <button onclick="runAnalysis()">Run Analysis</button>
@@ -94,35 +90,21 @@ canvas{background:#0f172a;border-radius:10px;padding:10px}
 
 <div class="loader" id="loader"></div>
 
-<div id="dashboard" style="display:none">
+<div id="result" style="display:none">
 
-<div class="grid">
-
-<div class="metric">
-<h4>Risk Score</h4>
-<canvas id="riskGauge"></canvas>
-<p id="riskClass"></p>
-</div>
-
-<div class="metric">
-<h4>Liquidity Ratio</h4>
-<h2 id="cr"></h2>
-</div>
-
-<div class="metric">
-<h4>DSCR</h4>
-<h2 id="dscr"></h2>
-</div>
-
+<div class="card">
+<h3>Risk Assessment</h3>
+<h2 id="riskScore"></h2>
+<h3 id="riskClass"></h3>
 </div>
 
 <div class="card">
-<h3>Funding Eligibility Overview</h3>
-<canvas id="fundingChart"></canvas>
+<h3>Financial Metrics Chart</h3>
+<canvas id="barChart"></canvas>
 </div>
 
 <div class="card">
-<h3>Financial Strength Radar</h3>
+<h3>Liquidity vs Repayment Radar</h3>
 <canvas id="radarChart"></canvas>
 </div>
 
@@ -131,19 +113,15 @@ canvas{background:#0f172a;border-radius:10px;padding:10px}
 <p id="memo"></p>
 </div>
 
-<div class="card">
-<button onclick="downloadCAM()">Download CAM Report</button>
-</div>
-
 </div>
 
 </div>
 
 <script>
 
-const API_URL = "https://YOUR-RAILWAY-DOMAIN.up.railway.app";
+const API_URL = "https://credit-backend-production-6a6d.up.railway.app";
 
-let result;
+let chartsCreated = false;
 
 async function runAnalysis(){
 
@@ -161,60 +139,49 @@ async function runAnalysis(){
 
     document.getElementById("loader").style.display="block";
 
-    const res = await fetch(API_URL + "/analyze",{
-        method:"POST",
-        body:fd
-    });
+    try{
+        const response = await fetch(API_URL + "/analyze",{
+            method:"POST",
+            body:fd
+        });
 
-    result = await res.json();
+        const data = await response.json();
 
-    document.getElementById("loader").style.display="none";
-    document.getElementById("dashboard").style.display="block";
+        document.getElementById("loader").style.display="none";
+        document.getElementById("result").style.display="block";
 
-    displayResults(result);
+        displayData(data);
+
+    }catch(error){
+        alert("Backend not reachable.");
+        document.getElementById("loader").style.display="none";
+    }
 }
 
-function displayResults(data){
+function displayData(data){
 
     const m = data.Metrics;
 
-    // Text Metrics
-    document.getElementById("cr").innerText = m.Current_Ratio.toFixed(2);
-    document.getElementById("dscr").innerText = m.DSCR.toFixed(2);
-    document.getElementById("memo").innerText = data.AI_Narrative;
+    document.getElementById("riskScore").innerText = 
+        "Risk Score: " + data.Risk_Score;
 
     document.getElementById("riskClass").innerText = data.Risk_Class;
     document.getElementById("riskClass").className =
         data.Risk_Class==="Low Risk"?"low":
         data.Risk_Class==="Moderate Risk"?"moderate":"high";
 
-    // Risk Gauge (Doughnut)
-    new Chart(document.getElementById("riskGauge"),{
-        type:"doughnut",
-        data:{
-            labels:["Score","Remaining"],
-            datasets:[{
-                data:[data.Risk_Score,100-data.Risk_Score],
-                backgroundColor:["#22c55e","#334155"]
-            }]
-        },
-        options:{
-            plugins:{legend:{display:false}},
-            cutout:"70%"
-        }
-    });
+    document.getElementById("memo").innerText = data.AI_Narrative;
 
-    // Funding Chart
-    new Chart(document.getElementById("fundingChart"),{
+    new Chart(document.getElementById("barChart"),{
         type:"bar",
         data:{
-            labels:["MPBF","WC Limit","Agri Limit","NWC"],
+            labels:["NWC","MPBF","WC Limit","Agri Limit"],
             datasets:[{
                 data:[
+                    m.NWC,
                     m.MPBF,
                     m.WC_Limit,
-                    m.Agri_Limit,
-                    m.NWC
+                    m.Agri_Limit
                 ],
                 backgroundColor:["#3b82f6","#22c55e","#f59e0b","#ef4444"]
             }]
@@ -222,7 +189,6 @@ function displayResults(data){
         options:{plugins:{legend:{display:false}}}
     });
 
-    // Radar Chart
     new Chart(document.getElementById("radarChart"),{
         type:"radar",
         data:{
@@ -239,15 +205,6 @@ function displayResults(data){
             }]
         }
     });
-
-}
-
-function downloadCAM(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.text("Agri / WC Calculator - Credit Appraisal Memo",20,20);
-    doc.text(result.AI_Narrative,20,40,{maxWidth:170});
-    doc.save("CAM_Report.pdf");
 }
 
 </script>
