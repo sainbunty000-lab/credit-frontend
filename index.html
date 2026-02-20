@@ -200,11 +200,11 @@ function renderChart(data) {
             datasets: [{
                 label: 'Financial Values',
                 data: [
-                    data.Sales,
-                    data.MPBF,
-                    data.Working_Capital_Limit,
-                    data.Agri_Limit
-                ],
+    data.Sales || 0,
+    data.MPBF || 0,
+    data.Working_Capital_Limit || 0,
+    data.Agri_Limit || 0
+],
                 backgroundColor: [
                     '#0ea5e9',
                     '#f59e0b',
