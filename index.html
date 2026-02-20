@@ -123,13 +123,12 @@ const API_URL = "https://credit-backend-production-6a6d.up.railway.app";
 let chartInstance = null;
 
 async function runAnalysis() {
-
     const bsFile = document.getElementById("bsFile").files[0];
     const plFile = document.getElementById("plFile").files[0];
     const bankFile = document.getElementById("bankFile").files[0];
 
     if (!bsFile || !plFile) {
-        alert("Balance Sheet and P&L are mandatory.");
+        alert("Balance Sheet and P&L are mandatory");
         return;
     }
 
@@ -141,27 +140,29 @@ async function runAnalysis() {
         formData.append("bank_file", bankFile);
     }
 
-    document.getElementById("loader").style.display = "block";
-    document.getElementById("results").style.display = "none";
-
     try {
+        const response = await fetch(
+            "https://credit-backend-production-6a6d.up.railway.app/analyze",
+            {
+                method: "POST",
+                body: formData
+            }
+        );
 
-        const response = await fetch(API_URL + "/analyze", {
-            method: "POST",
-            body: formData
-        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(errorText);
+            alert("Server Error: " + errorText);
+            return;
+        }
 
         const data = await response.json();
+        console.log(data);
 
-        document.getElementById("loader").style.display = "none";
-        document.getElementById("results").style.display = "block";
-
-        displayResults(data);
-
+        alert("Analysis Successful");
     } catch (error) {
         console.error(error);
-        alert("Server Error.");
-        document.getElementById("loader").style.display = "none";
+        alert("Connection Failed");
     }
 }
 
