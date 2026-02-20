@@ -2,8 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI OCR Underwriting Suite</title>
+<title>Enterprise OCR Underwriting Suite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body{
@@ -12,7 +14,6 @@ body{
     background:#0b1629;
     color:white;
 }
-
 header{
     background:#111f3a;
     padding:20px;
@@ -20,20 +21,17 @@ header{
     font-size:20px;
     font-weight:bold;
 }
-
 .container{
     padding:20px;
     max-width:1000px;
     margin:auto;
 }
-
 .card{
     background:#16233d;
     padding:20px;
     border-radius:10px;
     margin-bottom:20px;
 }
-
 button{
     background:#00bcd4;
     border:none;
@@ -44,19 +42,8 @@ button{
     cursor:pointer;
     margin-top:10px;
 }
-
-button:hover{ background:#00acc1; }
-
 .slide{ display:none; }
 .slide.active{ display:block; }
-
-.progress{
-    height:5px;
-    background:#00bcd4;
-    width:0%;
-    transition:0.4s;
-}
-
 .loader{
     border:4px solid #f3f3f3;
     border-top:4px solid #00bcd4;
@@ -66,69 +53,61 @@ button:hover{ background:#00acc1; }
     animation:spin 1s linear infinite;
     margin:auto;
 }
-
 @keyframes spin{
     0%{transform:rotate(0deg);}
     100%{transform:rotate(360deg);}
 }
-
-.case-item{
-    background:#0f1e36;
-    padding:10px;
+.heat-low{background:#4caf50;padding:6px;border-radius:4px;}
+.heat-medium{background:#ff9800;padding:6px;border-radius:4px;}
+.heat-high{background:#f44336;padding:6px;border-radius:4px;}
+.progressbar{
+    height:10px;
+    background:#333;
     border-radius:6px;
-    margin-bottom:10px;
+    overflow:hidden;
 }
-
-.success{color:#4caf50;}
-.warning{color:#ff9800;}
-.danger{color:#f44336;}
+.progressfill{
+    height:10px;
+    background:#00bcd4;
+}
+.flag{
+    background:#f44336;
+    padding:6px;
+    margin-top:5px;
+    border-radius:4px;
+}
 </style>
 </head>
 
 <body>
 
-<header>AI OCR Underwriting Suite</header>
-<div class="progress" id="progressBar"></div>
+<header>Enterprise OCR Underwriting Suite</header>
 
 <div class="container">
 
-<!-- Slide 1: Upload -->
 <div class="slide active" id="slide1">
 <div class="card">
-<h3>Upload Scanned Documents</h3>
+<h3>Upload Scanned PDFs</h3>
 <input type="file" id="bs" accept=".pdf"><br><br>
 <input type="file" id="pl" accept=".pdf"><br><br>
 <input type="file" id="bank" accept=".pdf"><br><br>
-<button onclick="startAnalysis()">Run OCR Analysis</button>
-<button onclick="showSlide(4)">View Case History</button>
+<button onclick="runAnalysis()">Run Analysis</button>
 </div>
 </div>
 
-<!-- Slide 2: Processing -->
 <div class="slide" id="slide2">
 <div class="card">
-<h3>Processing Documents</h3>
+<h3>Processing...</h3>
 <div class="loader"></div>
-<p style="text-align:center;">OCR Engine Running...</p>
 </div>
 </div>
 
-<!-- Slide 3: Result -->
 <div class="slide" id="slide3">
 <div class="card">
-<h3>Underwriting Results</h3>
-<div id="results"></div>
-<button onclick="showSlide(1)">New Case</button>
-<button onclick="showSlide(4)">View History</button>
-</div>
-</div>
-
-<!-- Slide 4: Storage -->
-<div class="slide" id="slide4">
-<div class="card">
-<h3>Saved Cases</h3>
-<div id="caseList"></div>
-<button onclick="showSlide(1)">Back</button>
+<h3>Risk Dashboard</h3>
+<div id="dashboard"></div>
+<button onclick="downloadCAM()">Download CAM PDF</button>
+<button onclick="location.reload()">New Case</button>
 </div>
 </div>
 
@@ -136,101 +115,100 @@ button:hover{ background:#00acc1; }
 
 <script>
 
-const API_URL = "https://YOUR_RAILWAY_URL"; // CHANGE THIS
+const API_URL = "https://YOUR_RAILWAY_URL"; // CHANGE
+
+let currentData = null;
 
 function showSlide(n){
     document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
     document.getElementById("slide"+n).classList.add("active");
-    document.getElementById("progressBar").style.width = (n*25)+"%";
-    if(n===4) loadCases();
 }
 
-async function startAnalysis(){
+async function runAnalysis(){
 
-    const bs = document.getElementById("bs").files[0];
-    const pl = document.getElementById("pl").files[0];
-    const bank = document.getElementById("bank").files[0];
-
-    if(!bs || !pl || !bank){
-        alert("Upload all three scanned PDFs.");
-        return;
-    }
+    const fd = new FormData();
+    fd.append("bs_file", document.getElementById("bs").files[0]);
+    fd.append("pl_file", document.getElementById("pl").files[0]);
+    fd.append("bank_file", document.getElementById("bank").files[0]);
 
     showSlide(2);
 
-    const fd = new FormData();
-    fd.append("bs_file", bs);
-    fd.append("pl_file", pl);
-    fd.append("bank_file", bank);
+    const res = await fetch(API_URL + "/analyze", {
+        method:"POST",
+        body:fd
+    });
 
-    try{
-        const res = await fetch(API_URL + "/analyze", {
-            method:"POST",
-            body:fd
-        });
-
-        const data = await res.json();
-        displayResults(data);
-        saveCase(data);
-        showSlide(3);
-
-    }catch(e){
-        alert("Server error. Check Railway backend.");
-        showSlide(1);
-    }
+    const data = await res.json();
+    currentData = data;
+    buildDashboard(data);
+    showSlide(3);
 }
 
-function displayResults(data){
+function buildDashboard(d){
 
-    let riskColor="success";
-    if(data.Risk_Score<60) riskColor="danger";
-    else if(data.Risk_Score<75) riskColor="warning";
+    let heatClass="heat-low";
+    if(d.Risk_Score<60) heatClass="heat-high";
+    else if(d.Risk_Score<75) heatClass="heat-medium";
 
-    document.getElementById("results").innerHTML = `
-    <b>Case ID:</b> ${data.Case_ID}<br><br>
-    <b>Sales:</b> ₹${data.Sales}<br>
-    <b>Bank Turnover:</b> ₹${data.Bank_Turnover}<br><br>
-    <b>Working Capital:</b> ₹${data.Working_Capital_Limit}<br>
-    <b>Agriculture Limit:</b> ₹${data.Agri_Limit}<br><br>
-    <b>Mismatch:</b> ${data.Mismatch_%}%<br>
-    <b class="${riskColor}">Risk Score:</b> ${data.Risk_Score}<br>
-    <b>Decision:</b> ${data.Decision}<br>
-    <b>Confidence:</b> ${data.Parsing_Confidence}%<br><br>
-    <i>${data.AI_Explanation}</i>
+    let fraudFlags = "";
+
+    if(d.Mismatch_% > 25)
+        fraudFlags += `<div class="flag">High Turnover Mismatch Detected</div>`;
+
+    if(d.Parsing_Confidence < 80)
+        fraudFlags += `<div class="flag">Low OCR Confidence</div>`;
+
+    if(d.Bank_Turnover < d.Sales*0.5)
+        fraudFlags += `<div class="flag">Suspicious Bank Activity</div>`;
+
+    if(fraudFlags === "")
+        fraudFlags = "No major red flags.";
+
+    document.getElementById("dashboard").innerHTML = `
+    <b>Case ID:</b> ${d.Case_ID}<br><br>
+
+    <b>Sales:</b> ₹${d.Sales}<br>
+    <b>Bank Turnover:</b> ₹${d.Bank_Turnover}<br><br>
+
+    <b>Working Capital:</b> ₹${d.Working_Capital_Limit}<br>
+    <b>Agriculture Limit:</b> ₹${d.Agri_Limit}<br><br>
+
+    <div class="${heatClass}">
+        Risk Score: ${d.Risk_Score}
+    </div><br>
+
+    <b>Accuracy Score:</b>
+    <div class="progressbar">
+        <div class="progressfill" style="width:${d.Parsing_Confidence}%"></div>
+    </div>
+    ${d.Parsing_Confidence}%<br><br>
+
+    <h4>Fraud Flag Engine</h4>
+    ${fraudFlags}<br>
+
+    <i>${d.AI_Explanation}</i>
     `;
 }
 
-function saveCase(data){
-    let cases = JSON.parse(localStorage.getItem("cases")||"[]");
-    cases.push(data);
-    localStorage.setItem("cases", JSON.stringify(cases));
-}
+function downloadCAM(){
 
-function loadCases(){
-    let cases = JSON.parse(localStorage.getItem("cases")||"[]");
-    const list = document.getElementById("caseList");
-    list.innerHTML="";
-    if(cases.length===0){
-        list.innerHTML="No saved cases.";
-        return;
-    }
-    cases.forEach((c,index)=>{
-        list.innerHTML+=`
-        <div class="case-item">
-        <b>${c.Case_ID}</b> - ${c.Decision}<br>
-        WC: ₹${c.Working_Capital_Limit} |
-        Agri: ₹${c.Agri_Limit}<br>
-        <button onclick="deleteCase(${index})">Delete</button>
-        </div>
-        `;
-    });
-}
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-function deleteCase(index){
-    let cases = JSON.parse(localStorage.getItem("cases")||"[]");
-    cases.splice(index,1);
-    localStorage.setItem("cases", JSON.stringify(cases));
-    loadCases();
+    doc.setFontSize(16);
+    doc.text("Credit Appraisal Memorandum", 20, 20);
+
+    doc.setFontSize(12);
+    doc.text(`Case ID: ${currentData.Case_ID}`, 20, 40);
+    doc.text(`Sales: ₹${currentData.Sales}`, 20, 50);
+    doc.text(`Bank Turnover: ₹${currentData.Bank_Turnover}`, 20, 60);
+    doc.text(`Working Capital Limit: ₹${currentData.Working_Capital_Limit}`, 20, 70);
+    doc.text(`Agriculture Limit: ₹${currentData.Agri_Limit}`, 20, 80);
+    doc.text(`Risk Score: ${currentData.Risk_Score}`, 20, 90);
+    doc.text(`Decision: ${currentData.Decision}`, 20, 100);
+    doc.text(`Confidence: ${currentData.Parsing_Confidence}%`, 20, 110);
+
+    doc.save("CAM_Report.pdf");
 }
 
 </script>
