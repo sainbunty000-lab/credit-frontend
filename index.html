@@ -170,17 +170,17 @@ function displayResults(data) {
     const metricsDiv = document.getElementById("metrics");
 
     metricsDiv.innerHTML = `
-        <div class="metric">Sales: ₹${data.Sales}</div>
-        <div class="metric">NWC: ₹${data.NWC}</div>
-        <div class="metric">Current Ratio: ${data.Current_Ratio}</div>
-        <div class="metric">MPBF: ₹${data.MPBF}</div>
-        <div class="metric">WC Limit: ₹${data.Working_Capital_Limit}</div>
-        <div class="metric">Agri Limit: ₹${data.Agri_Limit}</div>
-        <div class="metric">Risk Score: ${data.Risk_Score}</div>
-        <div class="metric">Decision: ${data.Decision}</div>
+        <div class="metric">Sales: ₹${data.Sales || 0}</div>
+        <div class="metric">NWC: ₹${data.NWC || 0}</div>
+        <div class="metric">Current Ratio: ${data.Current_Ratio || 0}</div>
+        <div class="metric">MPBF: ₹${data.MPBF || 0}</div>
+        <div class="metric">WC Limit: ₹${data.Working_Capital_Limit || 0}</div>
+        <div class="metric">Agri Limit: ₹${data.Agri_Limit || 0}</div>
+        <div class="metric">Risk Score: ${data.Risk_Score || 0}</div>
+        <div class="metric">Decision: ${data.Decision || "N/A"}</div>
     `;
 
-    document.getElementById("memo").innerText = data.Memo;
+    document.getElementById("memo").innerText = data.Memo || "";
 
     renderChart(data);
 }
