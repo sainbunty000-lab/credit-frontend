@@ -2,138 +2,234 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Enterprise OCR Underwriting Suite</title>
+<title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Segoe UI;background:#0b1629;color:white;}
-header{background:#111f3a;padding:20px;text-align:center;font-size:20px;font-weight:bold;}
-.container{padding:20px;max-width:1000px;margin:auto;}
-.card{background:#16233d;padding:20px;border-radius:10px;margin-bottom:20px;}
-button{background:#00bcd4;border:none;padding:10px 16px;border-radius:6px;color:white;font-weight:bold;cursor:pointer;margin-top:10px;}
-.slide{display:none;}
-.slide.active{display:block;}
-.loader{border:4px solid #f3f3f3;border-top:4px solid #00bcd4;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:auto;}
-@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-.heat-low{background:#4caf50;padding:6px;border-radius:4px;}
-.heat-medium{background:#ff9800;padding:6px;border-radius:4px;}
-.heat-high{background:#f44336;padding:6px;border-radius:4px;}
-.progressbar{height:10px;background:#333;border-radius:6px;overflow:hidden;}
-.progressfill{height:10px;background:#00bcd4;}
-.flag{background:#f44336;padding:6px;margin-top:5px;border-radius:4px;}
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:#e2e8f0;
+}
+header{
+    background:linear-gradient(90deg,#0ea5e9,#22c55e);
+    padding:18px;
+    text-align:center;
+    font-size:22px;
+    font-weight:bold;
+}
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
+}
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+input{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    border-radius:6px;
+    border:none;
+}
+button{
+    background:#0ea5e9;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:10px;
+}
+button:hover{
+    background:#0284c7;
+}
+.slide{ display:none; }
+.slide.active{ display:block; }
+
+.loader{
+    border:6px solid #334155;
+    border-top:6px solid #0ea5e9;
+    border-radius:50%;
+    width:60px;
+    height:60px;
+    animation:spin 1s linear infinite;
+    margin:auto;
+}
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+.metric{
+    margin:8px 0;
+}
+canvas{
+    background:white;
+    border-radius:8px;
+    padding:10px;
+}
+.risk-low{color:#22c55e;}
+.risk-mid{color:#f59e0b;}
+.risk-high{color:#ef4444;}
 </style>
 </head>
 
 <body>
 
-<header>Enterprise OCR Underwriting Suite</header>
+<header>🏦 Agri / WC Calculator</header>
 
 <div class="container">
 
+<!-- SLIDE 1 -->
 <div class="slide active" id="slide1">
 <div class="card">
-<h3>Upload Documents</h3>
-<input type="file" id="bs" accept=".pdf"><br><br>
-<input type="file" id="pl" accept=".pdf"><br><br>
-<input type="file" id="bank" accept=".pdf"><br><br>
+<h3>Upload Financial Documents</h3>
+<p>Balance Sheet & P&L Mandatory | Bank Optional</p>
+
+<input type="file" id="bs">
+<input type="file" id="pl">
+<input type="file" id="bank">
+
 <button onclick="runAnalysis()">Run Analysis</button>
 </div>
 </div>
 
+<!-- SLIDE 2 -->
 <div class="slide" id="slide2">
 <div class="card">
-<h3>Processing...</h3>
+<h3>Processing Financial Data...</h3>
 <div class="loader"></div>
 </div>
 </div>
 
+<!-- SLIDE 3 -->
 <div class="slide" id="slide3">
 <div class="card">
-<h3>Risk Dashboard</h3>
-<div id="dashboard"></div>
+<h3>Financial Dashboard</h3>
+<div id="results"></div>
+
+<canvas id="financeChart" height="120"></canvas>
+
 <button onclick="downloadCAM()">Download CAM PDF</button>
-<button onclick="location.reload()">New Case</button>
+<button onclick="resetApp()">New Case</button>
 </div>
 </div>
 
 </div>
 
 <script>
-const API_URL = "https://credit-backend-production-f657.up.railway.app";
-let currentData=null;
 
-function showSlide(n){
-document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
-document.getElementById("slide"+n).classList.add("active");
+const API_URL = "https://YOUR_RAILWAY_URL";
+
+let caseData = null;
+
+function showSlide(id){
+    document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
 }
 
 async function runAnalysis(){
 
-const bs=document.getElementById("bs").files[0];
-const pl=document.getElementById("pl").files[0];
-const bank=document.getElementById("bank").files[0];
+    const bs = document.getElementById("bs").files[0];
+    const pl = document.getElementById("pl").files[0];
+    const bank = document.getElementById("bank").files[0];
 
-if(!bank){alert("Bank statement is mandatory.");return;}
-if(!bs && !pl){alert("Upload either Balance Sheet or P&L.");return;}
+    if(!bs || !pl){
+        alert("Balance Sheet and P&L are mandatory.");
+        return;
+    }
 
-showSlide(2);
+    showSlide("slide2");
 
-const fd=new FormData();
-if(bs) fd.append("bs_file",bs);
-if(pl) fd.append("pl_file",pl);
-fd.append("bank_file",bank);
+    const fd = new FormData();
+    fd.append("bs_file", bs);
+    fd.append("pl_file", pl);
+    if(bank) fd.append("bank_file", bank);
 
-const res=await fetch(API_URL+"/analyze",{method:"POST",body:fd});
-const data=await res.json();
+    const res = await fetch(API_URL + "/analyze", {
+        method:"POST",
+        body:fd
+    });
 
-if(data.error){alert(data.error);showSlide(1);return;}
+    const data = await res.json();
+    caseData = data;
 
-currentData=data;
-buildDashboard(data);
-showSlide(3);
+    buildDashboard(data);
+    showSlide("slide3");
 }
 
 function buildDashboard(d){
 
-let heatClass="heat-low";
-if(d.Risk_Score<60) heatClass="heat-high";
-else if(d.Risk_Score<75) heatClass="heat-medium";
+    let riskClass = "risk-low";
+    if(d.Risk_Score < 60) riskClass = "risk-high";
+    else if(d.Risk_Score < 75) riskClass = "risk-mid";
 
-let fraudFlags="";
-if(d.Mismatch_%>25) fraudFlags+=`<div class="flag">High Turnover Mismatch</div>`;
-if(d.Parsing_Confidence<80) fraudFlags+=`<div class="flag">Low OCR Confidence</div>`;
-if(fraudFlags==="") fraudFlags="No major red flags.";
+    document.getElementById("results").innerHTML = `
+        <div class="metric">Sales: ₹${d.Sales}</div>
+        <div class="metric">NWC: ₹${d.NWC}</div>
+        <div class="metric">MPBF: ₹${d.MPBF}</div>
+        <div class="metric">Working Capital: ₹${d.Working_Capital_Limit}</div>
+        <div class="metric">Agri Limit: ₹${d.Agri_Limit}</div>
+        <div class="metric">DSCR: ${d.DSCR}</div>
+        <div class="metric ${riskClass}">Risk Score: ${d.Risk_Score}</div>
+        <hr>
+        <div>${d.Memo}</div>
+    `;
 
-document.getElementById("dashboard").innerHTML=`
-<b>Case ID:</b> ${d.Case_ID}<br><br>
-<b>Sales:</b> ₹${d.Sales}<br>
-<b>Bank Turnover:</b> ₹${d.Bank_Turnover}<br><br>
-<b>Working Capital:</b> ₹${d.Working_Capital_Limit}<br>
-<b>Agriculture Limit:</b> ₹${d.Agri_Limit}<br><br>
-<div class="${heatClass}">Risk Score: ${d.Risk_Score}</div><br>
-<b>Accuracy:</b>
-<div class="progressbar">
-<div class="progressfill" style="width:${d.Parsing_Confidence}%"></div>
-</div>
-${d.Parsing_Confidence}%<br><br>
-<h4>Fraud Flags</h4>
-${fraudFlags}<br>
-<i>${d.AI_Explanation}</i>
-`;
+    new Chart(document.getElementById("financeChart"),{
+        type:"bar",
+        data:{
+            labels:["Sales","MPBF","WC","Agri"],
+            datasets:[{
+                data:[
+                    d.Sales,
+                    d.MPBF,
+                    d.Working_Capital_Limit,
+                    d.Agri_Limit
+                ],
+                backgroundColor:["#0ea5e9","#22c55e","#f59e0b","#ef4444"]
+            }]
+        },
+        options:{plugins:{legend:{display:false}}}
+    });
 }
 
 function downloadCAM(){
-const {jsPDF}=window.jspdf;
-const doc=new jsPDF();
-doc.text("Credit Appraisal Memorandum",20,20);
-doc.text(`Case ID: ${currentData.Case_ID}`,20,40);
-doc.text(`Working Capital: ₹${currentData.Working_Capital_Limit}`,20,50);
-doc.text(`Agriculture Limit: ₹${currentData.Agri_Limit}`,20,60);
-doc.text(`Risk Score: ${currentData.Risk_Score}`,20,70);
-doc.text(`Decision: ${currentData.Decision}`,20,80);
-doc.save("CAM_Report.pdf");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Agri / WC Calculator - Credit Appraisal Memo",20,20);
+
+    doc.setFontSize(12);
+    doc.text(`Case ID: ${caseData.Case_ID}`,20,40);
+    doc.text(`Sales: ₹${caseData.Sales}`,20,50);
+    doc.text(`MPBF: ₹${caseData.MPBF}`,20,60);
+    doc.text(`Working Capital: ₹${caseData.Working_Capital_Limit}`,20,70);
+    doc.text(`Agri Limit: ₹${caseData.Agri_Limit}`,20,80);
+    doc.text(`DSCR: ${caseData.DSCR}`,20,90);
+    doc.text(`Risk Score: ${caseData.Risk_Score}`,20,100);
+
+    doc.text("Assessment Summary:",20,120);
+    doc.text(caseData.Memo,20,130);
+
+    doc.save("Agri_WC_CAM.pdf");
 }
+
+function resetApp(){
+    location.reload();
+}
+
 </script>
 
 </body>
