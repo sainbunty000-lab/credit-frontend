@@ -2,116 +2,115 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agri / WC Calculator</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{
+body {
     margin:0;
-    font-family:Segoe UI;
+    font-family: Arial, sans-serif;
     background:#0f172a;
     color:white;
 }
-header{
-    background:#1e40af;
+header {
     padding:20px;
     text-align:center;
-    font-size:22px;
+    font-size:24px;
     font-weight:bold;
+    background:linear-gradient(90deg,#0ea5e9,#22c55e);
 }
-.container{
-    max-width:1000px;
-    margin:auto;
+.container {
     padding:20px;
+    max-width:900px;
+    margin:auto;
 }
-.card{
+.card {
     background:#1e293b;
     padding:20px;
     border-radius:12px;
     margin-bottom:20px;
 }
-input{
+input[type=file] {
     width:100%;
-    padding:10px;
     margin:10px 0;
-    border-radius:6px;
-    border:none;
 }
-button{
-    background:#22c55e;
-    color:white;
-    border:none;
+button {
+    width:100%;
     padding:12px;
-    border-radius:6px;
+    background:#22c55e;
+    border:none;
+    color:white;
     font-weight:bold;
+    border-radius:8px;
     cursor:pointer;
 }
-button:hover{
-    background:#16a34a;
+button:hover {
+    opacity:0.9;
 }
-.loader{
+.loader {
     display:none;
-    margin:auto;
-    border:6px solid #334155;
-    border-top:6px solid #22c55e;
-    border-radius:50%;
-    width:60px;
-    height:60px;
-    animation:spin 1s linear infinite;
+    text-align:center;
+    margin-top:15px;
 }
-@keyframes spin{
-    100%{transform:rotate(360deg)}
+.result-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:15px;
 }
-canvas{
-    background:#0f172a;
+.metric {
+    background:#334155;
+    padding:15px;
     border-radius:10px;
-    padding:10px;
 }
-.low{color:#22c55e}
-.moderate{color:#facc15}
-.high{color:#ef4444}
+canvas {
+    margin-top:20px;
+    background:white;
+    border-radius:10px;
+}
+.memo {
+    white-space:pre-line;
+    background:#111827;
+    padding:15px;
+    border-radius:10px;
+}
 </style>
 </head>
 
 <body>
 
-<header>Agri / WC Calculator</header>
+<header>🏦 Agri / WC Calculator</header>
 
 <div class="container">
 
 <div class="card">
-<h3>Upload Financial Files</h3>
-<input type="file" id="bs">
-<input type="file" id="pl">
+<h3>Upload Financial Documents</h3>
+
+<label>Balance Sheet (Mandatory)</label>
+<input type="file" id="bsFile" required>
+
+<label>Profit & Loss (Mandatory)</label>
+<input type="file" id="plFile" required>
+
+<label>Bank Statement (Optional)</label>
+<input type="file" id="bankFile">
+
 <button onclick="runAnalysis()">Run Analysis</button>
+
+<div class="loader" id="loader">Processing Financial Data...</div>
 </div>
 
-<div class="loader" id="loader"></div>
+<div class="card" id="results" style="display:none;">
 
-<div id="result" style="display:none">
+<h3>Financial Summary</h3>
 
-<div class="card">
-<h3>Risk Assessment</h3>
-<h2 id="riskScore"></h2>
-<h3 id="riskClass"></h3>
-</div>
+<div class="result-grid" id="metrics"></div>
 
-<div class="card">
-<h3>Financial Metrics Chart</h3>
-<canvas id="barChart"></canvas>
-</div>
+<canvas id="financeChart"></canvas>
 
-<div class="card">
-<h3>Liquidity vs Repayment Radar</h3>
-<canvas id="radarChart"></canvas>
-</div>
-
-<div class="card">
 <h3>AI Credit Memo</h3>
-<p id="memo"></p>
-</div>
+<div class="memo" id="memo"></div>
 
 </div>
 
@@ -119,90 +118,106 @@ canvas{
 
 <script>
 
-const API_URL = "https://credit-backend-production-6a6d.up.railway.app";
+const API_URL = "https://YOUR-RAILWAY-URL.up.railway.app"; // 🔥 REPLACE THIS
 
-let chartsCreated = false;
+let chartInstance = null;
 
-async function runAnalysis(){
+async function runAnalysis() {
 
-    const bs = document.getElementById("bs").files[0];
-    const pl = document.getElementById("pl").files[0];
+    const bsFile = document.getElementById("bsFile").files[0];
+    const plFile = document.getElementById("plFile").files[0];
+    const bankFile = document.getElementById("bankFile").files[0];
 
-    if(!bs || !pl){
-        alert("Balance Sheet and P&L required");
+    if (!bsFile || !plFile) {
+        alert("Balance Sheet and P&L are mandatory.");
         return;
     }
 
-    const fd = new FormData();
-    fd.append("bs_file", bs);
-    fd.append("pl_file", pl);
+    const formData = new FormData();
+    formData.append("bs_file", bsFile);
+    formData.append("pl_file", plFile);
 
-    document.getElementById("loader").style.display="block";
+    if (bankFile) {
+        formData.append("bank_file", bankFile);
+    }
 
-    try{
-        const response = await fetch(API_URL + "/analyze",{
-            method:"POST",
-            body:fd
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("results").style.display = "none";
+
+    try {
+
+        const response = await fetch(API_URL + "/analyze", {
+            method: "POST",
+            body: formData
         });
 
         const data = await response.json();
 
-        document.getElementById("loader").style.display="none";
-        document.getElementById("result").style.display="block";
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("results").style.display = "block";
 
-        displayData(data);
+        displayResults(data);
 
-    }catch(error){
-        alert("Backend not reachable.");
-        document.getElementById("loader").style.display="none";
+    } catch (error) {
+        console.error(error);
+        alert("Server Error.");
+        document.getElementById("loader").style.display = "none";
     }
 }
 
-function displayData(data){
+function displayResults(data) {
 
-    const m = data.Metrics;
+    const metricsDiv = document.getElementById("metrics");
 
-    document.getElementById("riskScore").innerText = 
-        "Risk Score: " + data.Risk_Score;
+    metricsDiv.innerHTML = `
+        <div class="metric">Sales: ₹${data.Sales}</div>
+        <div class="metric">NWC: ₹${data.NWC}</div>
+        <div class="metric">Current Ratio: ${data.Current_Ratio}</div>
+        <div class="metric">MPBF: ₹${data.MPBF}</div>
+        <div class="metric">WC Limit: ₹${data.Working_Capital_Limit}</div>
+        <div class="metric">Agri Limit: ₹${data.Agri_Limit}</div>
+        <div class="metric">Risk Score: ${data.Risk_Score}</div>
+        <div class="metric">Decision: ${data.Decision}</div>
+    `;
 
-    document.getElementById("riskClass").innerText = data.Risk_Class;
-    document.getElementById("riskClass").className =
-        data.Risk_Class==="Low Risk"?"low":
-        data.Risk_Class==="Moderate Risk"?"moderate":"high";
+    document.getElementById("memo").innerText = data.Memo;
 
-    document.getElementById("memo").innerText = data.AI_Narrative;
+    renderChart(data);
+}
 
-    new Chart(document.getElementById("barChart"),{
-        type:"bar",
-        data:{
-            labels:["NWC","MPBF","WC Limit","Agri Limit"],
-            datasets:[{
-                data:[
-                    m.NWC,
-                    m.MPBF,
-                    m.WC_Limit,
-                    m.Agri_Limit
+function renderChart(data) {
+
+    const ctx = document.getElementById("financeChart").getContext("2d");
+
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Sales','MPBF','WC Limit','Agri Limit'],
+            datasets: [{
+                label: 'Financial Values',
+                data: [
+                    data.Sales,
+                    data.MPBF,
+                    data.Working_Capital_Limit,
+                    data.Agri_Limit
                 ],
-                backgroundColor:["#3b82f6","#22c55e","#f59e0b","#ef4444"]
+                backgroundColor: [
+                    '#0ea5e9',
+                    '#f59e0b',
+                    '#22c55e',
+                    '#ef4444'
+                ]
             }]
         },
-        options:{plugins:{legend:{display:false}}}
-    });
-
-    new Chart(document.getElementById("radarChart"),{
-        type:"radar",
-        data:{
-            labels:["Liquidity","Profitability","Leverage","Repayment"],
-            datasets:[{
-                data:[
-                    m.Current_Ratio,
-                    m.EBITDA/100000,
-                    m.NWC/100000,
-                    m.DSCR
-                ],
-                backgroundColor:"rgba(59,130,246,0.4)",
-                borderColor:"#3b82f6"
-            }]
+        options: {
+            responsive:true,
+            plugins:{
+                legend:{display:false}
+            }
         }
     });
 }
