@@ -1,182 +1,269 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Agri / WC Calculator</title>
+    <title>Agri / WC Calculator – Underwriting Suite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            color: white;
+            margin:0;
+            font-family:Segoe UI;
+            background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+            color:white;
         }
 
         header {
-            padding: 20px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            background: linear-gradient(to right, #1f4037, #99f2c8);
-            color: black;
+            padding:20px;
+            text-align:center;
+            font-size:24px;
+            font-weight:bold;
+            background:linear-gradient(90deg,#1f4037,#99f2c8);
+            color:black;
         }
 
         .container {
-            padding: 20px;
-            max-width: 600px;
-            margin: auto;
+            max-width:1200px;
+            margin:auto;
+            padding:20px;
         }
 
         .card {
-            background: rgba(255,255,255,0.08);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            background:rgba(255,255,255,0.08);
+            backdrop-filter:blur(10px);
+            padding:20px;
+            border-radius:15px;
+            margin-bottom:20px;
         }
 
-        input[type="file"] {
-            width: 100%;
-            margin-bottom: 15px;
-            padding: 8px;
+        input {
+            width:100%;
+            padding:10px;
+            margin-bottom:10px;
+            border:none;
+            border-radius:8px;
         }
 
         button {
-            width: 100%;
-            padding: 12px;
-            background: #2ecc71;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+            padding:10px;
+            width:100%;
+            border:none;
+            border-radius:8px;
+            background:#00c6ff;
+            font-weight:bold;
+            cursor:pointer;
+            margin-bottom:10px;
         }
 
-        button:hover {
-            background: #27ae60;
+        .result-box {
+            background:#111c2a;
+            padding:15px;
+            border-radius:8px;
+            margin-top:10px;
         }
 
-        .result-item {
-            background: rgba(255,255,255,0.15);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+        canvas {
+            background:white;
+            border-radius:10px;
+            padding:10px;
         }
 
-        .risk-high { color: #ff4d4d; font-weight: bold; }
-        .risk-medium { color: #f1c40f; font-weight: bold; }
-        .risk-low { color: #2ecc71; font-weight: bold; }
-
-        .loading {
-            text-align: center;
-            margin-top: 10px;
-        }
+        .heat-low { color:#2ecc71; }
+        .heat-mid { color:#f1c40f; }
+        .heat-high { color:#e74c3c; }
     </style>
 </head>
 
 <body>
 
-<header>
-    🌾 Agri / WC Calculator
-</header>
+<header>🌾 Agri / WC Calculator – Underwriting Suite</header>
 
 <div class="container">
 
-    <div class="card">
-        <h3>Upload Financial Documents</h3>
+<!-- FINANCIAL INPUT -->
+<div class="card">
+    <h3>Manual Financial Entry</h3>
+    <input type="number" id="sales" placeholder="Annual Sales">
+    <input type="number" id="inventory" placeholder="Inventory">
+    <input type="number" id="debtors" placeholder="Debtors">
+    <input type="number" id="creditors" placeholder="Creditors">
+    <input type="number" id="profit" placeholder="Net Profit">
+    <input type="number" id="emi" placeholder="Existing EMI">
+</div>
 
-        <label>Balance Sheet (Mandatory)</label>
-        <input type="file" id="bsFile">
+<!-- BANK UPLOAD -->
+<div class="card">
+    <h3>Bank Statement Upload (Excel)</h3>
+    <input type="file" id="bankFile">
+    <button onclick="analyzeAll()">Run Full Analysis</button>
+</div>
 
-        <label>Profit & Loss (Mandatory)</label>
-        <input type="file" id="plFile">
+<!-- RESULTS -->
+<div class="card">
+    <h3>Underwriting Dashboard</h3>
+    <div class="result-box" id="results"></div>
+</div>
 
-        <label>Bank Statement (Optional)</label>
-        <input type="file" id="bankFile">
+<!-- CHARTS -->
+<div class="card">
+    <canvas id="eligibilityChart"></canvas>
+</div>
 
-        <button onclick="runAnalysis()">Run Analysis</button>
+<div class="card">
+    <canvas id="riskChart"></canvas>
+</div>
 
-        <div class="loading" id="loading"></div>
-    </div>
-
-    <div class="card" id="resultsSection" style="display:none;">
-        <h3>Financial Summary</h3>
-
-        <div class="result-item">Sales: <span id="sales"></span></div>
-        <div class="result-item">NWC: <span id="nwc"></span></div>
-        <div class="result-item">Current Ratio: <span id="cr"></span></div>
-        <div class="result-item">MPBF: <span id="mpbf"></span></div>
-        <div class="result-item">Working Capital Limit: <span id="wcLimit"></span></div>
-        <div class="result-item">Agri Limit: <span id="agriLimit"></span></div>
-        <div class="result-item">Risk Score: <span id="riskScore"></span></div>
-        <div class="result-item">Decision: <span id="decision"></span></div>
-    </div>
+<div class="card">
+    <button onclick="generatePDF()">Download CAM Report</button>
+</div>
 
 </div>
 
 <script>
-async function runAnalysis() {
 
-    const bsFile = document.getElementById("bsFile").files[0];
-    const plFile = document.getElementById("plFile").files[0];
-    const bankFile = document.getElementById("bankFile").files[0];
-    const loading = document.getElementById("loading");
+let globalData = {};
 
-    if (!bsFile || !plFile) {
-        alert("Balance Sheet and P&L are mandatory.");
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("bs_file", bsFile);
-    formData.append("pl_file", plFile);
-
-    if (bankFile) {
-        formData.append("bank_file", bankFile);
-    }
-
-    loading.innerText = "Processing... Please wait.";
-
-    try {
-        const response = await fetch(
-            "https://credit-backend-production-6a6d.up.railway.app/analyze",
-            {
-                method: "POST",
-                body: formData
-            }
-        );
-
-        const data = await response.json();
-
-        loading.innerText = "";
-        document.getElementById("resultsSection").style.display = "block";
-
-        document.getElementById("sales").innerText = "₹ " + data.Sales;
-        document.getElementById("nwc").innerText = "₹ " + data.NWC;
-        document.getElementById("cr").innerText = data.Current_Ratio;
-        document.getElementById("mpbf").innerText = "₹ " + data.MPBF;
-        document.getElementById("wcLimit").innerText = "₹ " + data.Working_Capital_Limit;
-        document.getElementById("agriLimit").innerText = "₹ " + data.Agri_Limit;
-
-        const riskElement = document.getElementById("riskScore");
-        riskElement.innerText = data.Risk_Score;
-
-        if (data.Risk_Score >= 80) {
-            riskElement.className = "risk-low";
-        } else if (data.Risk_Score >= 50) {
-            riskElement.className = "risk-medium";
-        } else {
-            riskElement.className = "risk-high";
-        }
-
-        document.getElementById("decision").innerText = data.Decision;
-
-    } catch (error) {
-        loading.innerText = "";
-        alert("Server Error. Please check backend.");
-        console.error(error);
-    }
+function cleanNumber(v){
+    try{
+        return parseFloat(v.toString().replace(/,/g,'')) || 0;
+    }catch{return 0;}
 }
+
+function analyzeBank(file){
+
+    return new Promise((resolve)=>{
+        const reader = new FileReader();
+        reader.onload = function(e){
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data,{type:'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+            let totalCredit = 0;
+            let balances = [];
+            let bounces = 0;
+            let suspicious = 0;
+
+            json.forEach(row=>{
+                row.forEach(cell=>{
+                    let value = cleanNumber(cell);
+                    if(value>0) totalCredit += value;
+
+                    let text = String(cell).toLowerCase();
+                    if(text.includes("bounce")||text.includes("return")) bounces++;
+
+                    if(value>500000) suspicious++;
+                });
+            });
+
+            resolve({
+                totalCredit,
+                avgBalance: balances.length ? balances.reduce((a,b)=>a+b)/balances.length : 0,
+                bounces,
+                suspicious
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function analyzeAll(){
+
+    let sales = cleanNumber(document.getElementById("sales").value);
+    let inv = cleanNumber(document.getElementById("inventory").value);
+    let debt = cleanNumber(document.getElementById("debtors").value);
+    let cred = cleanNumber(document.getElementById("creditors").value);
+    let profit = cleanNumber(document.getElementById("profit").value);
+    let emi = cleanNumber(document.getElementById("emi").value);
+
+    let bankFile = document.getElementById("bankFile").files[0];
+
+    let bankData = bankFile ? await analyzeBank(bankFile) : {totalCredit:0,bounces:0,suspicious:0};
+
+    let ca = inv + debt;
+    let cl = cred;
+    let nwc = ca - cl;
+    let cr = cl ? ca/cl : 0;
+    let mpbf = Math.max(0,(0.75*(inv+debt-cred))-nwc);
+    let turnover = 0.20*sales;
+    let wcLimit = Math.max(mpbf,turnover);
+
+    let hygiene = 100;
+    if(bankData.bounces>2) hygiene-=30;
+    if(bankData.suspicious>5) hygiene-=20;
+
+    let risk = 100;
+    if(cr<1) risk-=30;
+    if(nwc<0) risk-=20;
+    if(hygiene<70) risk-=20;
+
+    let decision = risk>=70?"Approve":risk>=50?"Review":"Reject";
+
+    globalData = {sales,nwc,cr,mpbf,wcLimit,risk,decision,bankData};
+
+    document.getElementById("results").innerHTML = `
+        NWC: ₹ ${nwc.toFixed(2)} <br>
+        Current Ratio: ${cr.toFixed(2)} <br>
+        MPBF: ₹ ${mpbf.toFixed(2)} <br>
+        WC Limit: ₹ ${wcLimit.toFixed(2)} <br>
+        Total Bank Credit: ₹ ${bankData.totalCredit.toFixed(2)} <br>
+        Bounce Count: ${bankData.bounces} <br>
+        Fraud Flags: ${bankData.suspicious} <br>
+        Hygiene Score: ${hygiene} <br>
+        <b>Risk Score: ${risk}</b> <br>
+        <b>Decision: ${decision}</b>
+    `;
+
+    drawCharts(mpbf,turnover,wcLimit,risk);
+}
+
+function drawCharts(mpbf,turnover,wcLimit,risk){
+
+    new Chart(document.getElementById("eligibilityChart"),{
+        type:"bar",
+        data:{
+            labels:["MPBF","Turnover Method","Final Limit"],
+            datasets:[{
+                data:[mpbf,turnover,wcLimit],
+                backgroundColor:["#3498db","#9b59b6","#2ecc71"]
+            }]
+        }
+    });
+
+    new Chart(document.getElementById("riskChart"),{
+        type:"doughnut",
+        data:{
+            labels:["Risk Score","Remaining"],
+            datasets:[{
+                data:[risk,100-risk],
+                backgroundColor:["#2ecc71","#2c3e50"]
+            }]
+        }
+    });
+}
+
+function generatePDF(){
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.text("Credit Appraisal Memorandum",20,20);
+
+    doc.text(`Sales: ${globalData.sales}`,20,40);
+    doc.text(`NWC: ${globalData.nwc}`,20,50);
+    doc.text(`Current Ratio: ${globalData.cr}`,20,60);
+    doc.text(`MPBF: ${globalData.mpbf}`,20,70);
+    doc.text(`WC Limit: ${globalData.wcLimit}`,20,80);
+    doc.text(`Risk Score: ${globalData.risk}`,20,90);
+    doc.text(`Decision: ${globalData.decision}`,20,100);
+
+    doc.save("CAM_Report.pdf");
+}
+
 </script>
 
 </body>
