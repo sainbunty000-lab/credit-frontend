@@ -96,6 +96,18 @@ canvas {
 <label>Bank Statement (Optional)</label>
 <input type="file" id="bankFile">
 
+    <div id="resultsSection" style="display:none; margin-top:20px;">
+    <h3>Financial Summary</h3>
+    <p>Sales: <span id="sales"></span></p>
+    <p>NWC: <span id="nwc"></span></p>
+    <p>Current Ratio: <span id="cr"></span></p>
+    <p>MPBF: <span id="mpbf"></span></p>
+    <p>WC Limit: <span id="wcLimit"></span></p>
+    <p>Agri Limit: <span id="agriLimit"></span></p>
+    <p>Risk Score: <span id="riskScore"></span></p>
+    <p>Decision: <span id="decision"></span></p>
+    </div>
+    
 <button onclick="runAnalysis()">Run Analysis</button>
 
 <div class="loader" id="loader">Processing Financial Data...</div>
@@ -159,7 +171,16 @@ async function runAnalysis() {
         const data = await response.json();
         console.log(data);
 
-        alert("Analysis Successful");
+        alert("document.getElementById("resultsSection").style.display = "block";
+
+document.getElementById("sales").innerText = "₹ " + data.Sales;
+document.getElementById("nwc").innerText = "₹ " + data.NWC;
+document.getElementById("cr").innerText = data.Current_Ratio;
+document.getElementById("mpbf").innerText = "₹ " + data.MPBF;
+document.getElementById("wcLimit").innerText = "₹ " + data.Working_Capital_Limit;
+document.getElementById("agriLimit").innerText = "₹ " + data.Agri_Limit;
+document.getElementById("riskScore").innerText = data.Risk_Score;
+document.getElementById("decision").innerText = data.Decision;");
     } catch (error) {
         console.error(error);
         alert("Connection Failed");
