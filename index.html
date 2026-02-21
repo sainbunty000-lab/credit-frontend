@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
+body{
 margin:0;
 font-family:Segoe UI;
 background:#0f172a;
@@ -73,12 +73,14 @@ width:100%;
 font-weight:bold;
 cursor:pointer;
 border-radius:6px;
+margin-top:10px;
 }
 
 .kpi{
 display:flex;
 gap:20px;
 flex-wrap:wrap;
+margin-bottom:20px;
 }
 
 .kpi div{
@@ -99,43 +101,49 @@ text-align:center;
 <button onclick="show('tl')">Term Loan</button>
 <button onclick="show('agri')">Agriculture</button>
 <button onclick="show('dashboard')">Dashboard</button>
+<button class="run" onclick="runAnalysis()">▶ Run Analysis</button>
 </div>
 
 <div class="main">
 
 <div id="wc" class="card">
-<h3>Working Capital</h3>
+<h3>Working Capital (RBI)</h3>
 <input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
+<button class="run" onclick="runAnalysis()">Run Analysis</button>
 </div>
 
 <div id="tl" class="card" style="display:none">
-<h3>Term Loan</h3>
+<h3>Term Loan (DSCR)</h3>
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
+<button class="run" onclick="runAnalysis()">Run Analysis</button>
 </div>
 
 <div id="agri" class="card" style="display:none">
-<h3>Agriculture</h3>
+<h3>Agriculture (Your Model)</h3>
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="undoc" placeholder="Undocumented Income">
 <input id="requested" placeholder="Requested Loan">
-<button class="run" onclick="runAnalysis()">Run Full Analysis</button>
+<button class="run" onclick="runAnalysis()">Run Analysis</button>
 </div>
 
 <div id="dashboard" style="display:none">
+
 <div class="kpi">
-<div id="k_wc">WC</div>
-<div id="k_agri">Agri</div>
-<div id="k_dscr">DSCR</div>
-<div id="k_final">Final</div>
+<div id="k_wc">WC ₹0</div>
+<div id="k_agri">Agri ₹0</div>
+<div id="k_dscr">DSCR 0</div>
+<div id="k_final">Final ₹0</div>
 </div>
+
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
+
 </div>
 
 </div>
@@ -155,16 +163,16 @@ let chart;
 async function runAnalysis(){
 
 const payload = {
-turnover: parseFloat(turnover.value)||0,
-inventory: parseFloat(inventory.value)||0,
-debtors: parseFloat(debtors.value)||0,
-creditors: parseFloat(creditors.value)||0,
-net_profit: parseFloat(net_profit.value)||0,
-depreciation: parseFloat(depreciation.value)||0,
-monthly_emi: parseFloat(monthly_emi.value)||0,
-tax_paid: parseFloat(tax_paid.value)||0,
-undocumented_income: parseFloat(undoc.value)||0,
-requested_loan: parseFloat(requested.value)||0
+turnover: parseFloat(document.getElementById("turnover").value)||0,
+inventory: parseFloat(document.getElementById("inventory").value)||0,
+debtors: parseFloat(document.getElementById("debtors").value)||0,
+creditors: parseFloat(document.getElementById("creditors").value)||0,
+net_profit: parseFloat(document.getElementById("net_profit").value)||0,
+depreciation: parseFloat(document.getElementById("depreciation").value)||0,
+monthly_emi: parseFloat(document.getElementById("monthly_emi").value)||0,
+tax_paid: parseFloat(document.getElementById("tax_paid").value)||0,
+undocumented_income: parseFloat(document.getElementById("undoc").value)||0,
+requested_loan: parseFloat(document.getElementById("requested").value)||0
 };
 
 const res = await fetch(API_URL,{
@@ -175,10 +183,10 @@ body:JSON.stringify(payload)
 
 const data = await res.json();
 
-k_wc.innerHTML = "WC ₹"+data.wc_eligible;
-k_agri.innerHTML = "Agri ₹"+data.agri_eligible;
-k_dscr.innerHTML = "DSCR "+data.dscr;
-k_final.innerHTML = "Final ₹"+data.final_recommendation;
+document.getElementById("k_wc").innerHTML = "WC ₹"+(data.wc_eligible || 0);
+document.getElementById("k_agri").innerHTML = "Agri ₹"+(data.agri_eligible || 0);
+document.getElementById("k_dscr").innerHTML = "DSCR "+(data.dscr || 0);
+document.getElementById("k_final").innerHTML = "Final ₹"+(data.final_recommendation || 0);
 
 if(chart) chart.destroy();
 
@@ -189,9 +197,9 @@ labels:["WC","Agri","Final"],
 datasets:[{
 label:"Eligibility",
 data:[
-data.wc_eligible,
-data.agri_eligible,
-data.final_recommendation
+data.wc_eligible || 0,
+data.agri_eligible || 0,
+data.final_recommendation || 0
 ],
 backgroundColor:["#0ea5e9","#22c55e","#ef4444"]
 }]
