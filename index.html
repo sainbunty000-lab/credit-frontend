@@ -1,267 +1,297 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Agri / WC Calculator – Underwriting Suite</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agri / WC Calculator – Underwriting Suite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <style>
-        body {
-            margin:0;
-            font-family:Segoe UI;
-            background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-            color:white;
-        }
-
-        header {
-            padding:20px;
-            text-align:center;
-            font-size:24px;
-            font-weight:bold;
-            background:linear-gradient(90deg,#1f4037,#99f2c8);
-            color:black;
-        }
-
-        .container {
-            max-width:1200px;
-            margin:auto;
-            padding:20px;
-        }
-
-        .card {
-            background:rgba(255,255,255,0.08);
-            backdrop-filter:blur(10px);
-            padding:20px;
-            border-radius:15px;
-            margin-bottom:20px;
-        }
-
-        input {
-            width:100%;
-            padding:10px;
-            margin-bottom:10px;
-            border:none;
-            border-radius:8px;
-        }
-
-        button {
-            padding:10px;
-            width:100%;
-            border:none;
-            border-radius:8px;
-            background:#00c6ff;
-            font-weight:bold;
-            cursor:pointer;
-            margin-bottom:10px;
-        }
-
-        .result-box {
-            background:#111c2a;
-            padding:15px;
-            border-radius:8px;
-            margin-top:10px;
-        }
-
-        canvas {
-            background:white;
-            border-radius:10px;
-            padding:10px;
-        }
-
-        .heat-low { color:#2ecc71; }
-        .heat-mid { color:#f1c40f; }
-        .heat-high { color:#e74c3c; }
-    </style>
+<style>
+body{margin:0;font-family:Segoe UI;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:white;}
+header{padding:18px;text-align:center;font-size:22px;font-weight:bold;background:#1f4037;}
+.tabs{display:flex;}
+.tabs button{flex:1;padding:12px;border:none;background:#2c5364;color:white;cursor:pointer;}
+.tabs button.active{background:#00c6ff;color:black;font-weight:bold;}
+.slide{display:none;padding:20px;}
+.slide.active{display:block;}
+.card{background:rgba(255,255,255,0.08);padding:15px;border-radius:12px;margin-bottom:15px;}
+input,select{width:100%;padding:8px;margin-bottom:8px;border:none;border-radius:6px;}
+button.run{width:100%;padding:10px;border:none;border-radius:6px;background:#2ecc71;font-weight:bold;cursor:pointer;margin-bottom:10px;}
+.result{background:#111c2a;padding:12px;border-radius:6px;margin-top:10px;font-size:14px;}
+canvas{background:white;border-radius:8px;padding:10px;}
+</style>
 </head>
 
 <body>
 
 <header>🌾 Agri / WC Calculator – Underwriting Suite</header>
 
-<div class="container">
-
-<!-- FINANCIAL INPUT -->
-<div class="card">
-    <h3>Manual Financial Entry</h3>
-    <input type="number" id="sales" placeholder="Annual Sales">
-    <input type="number" id="inventory" placeholder="Inventory">
-    <input type="number" id="debtors" placeholder="Debtors">
-    <input type="number" id="creditors" placeholder="Creditors">
-    <input type="number" id="profit" placeholder="Net Profit">
-    <input type="number" id="emi" placeholder="Existing EMI">
+<div class="tabs">
+<button onclick="showSlide(1)" id="tab1" class="active">Working Capital</button>
+<button onclick="showSlide(2)" id="tab2">Agriculture</button>
+<button onclick="showSlide(3)" id="tab3">Bank Perfios</button>
 </div>
 
-<!-- BANK UPLOAD -->
+<!-- WORKING CAPITAL -->
+<div id="slide1" class="slide active">
 <div class="card">
-    <h3>Bank Statement Upload (Excel)</h3>
-    <input type="file" id="bankFile">
-    <button onclick="analyzeAll()">Run Full Analysis</button>
+<h3>Working Capital Engine</h3>
+<input type="number" id="sales" placeholder="Annual Sales">
+<input type="number" id="inventory" placeholder="Inventory">
+<input type="number" id="debtors" placeholder="Debtors">
+<input type="number" id="creditors" placeholder="Creditors">
+<button class="run" onclick="runWC()">Calculate WC</button>
+<div class="result" id="wcResult"></div>
+</div>
 </div>
 
-<!-- RESULTS -->
+<!-- AGRICULTURE -->
+<div id="slide2" class="slide">
 <div class="card">
-    <h3>Underwriting Dashboard</h3>
-    <div class="result-box" id="results"></div>
+<h3>Agriculture Lending Engine</h3>
+<input type="number" id="profit" placeholder="Net Profit">
+<input type="number" id="dep" placeholder="Depreciation">
+<input type="number" id="tax" placeholder="Tax Paid">
+<input type="number" id="emiAgri" placeholder="Existing EMI">
+<input type="number" id="undoc" placeholder="Undocumented Income">
+<input type="number" id="loanReq" placeholder="Requested Loan">
+<button class="run" onclick="runAgri()">Calculate Agri</button>
+<div class="result" id="agResult"></div>
+</div>
 </div>
 
-<!-- CHARTS -->
+<!-- BANK -->
+<div id="slide3" class="slide">
 <div class="card">
-    <canvas id="eligibilityChart"></canvas>
+<h3>Multi-Bank Statement Analyzer</h3>
+<input type="file" id="bankFile" accept=".xlsx,.xls,.csv">
+<input type="number" id="existingEmi" placeholder="Existing EMI">
+<input type="number" id="proposedEmi" placeholder="Proposed EMI">
+<select id="stressLevel">
+<option value="1">Normal</option>
+<option value="0.8">Moderate</option>
+<option value="0.65">Severe</option>
+</select>
+<button class="run" onclick="runPerfios()">Run Analysis</button>
+<div class="result" id="bankResult"></div>
 </div>
 
 <div class="card">
-    <canvas id="riskChart"></canvas>
+<canvas id="riskChart"></canvas>
 </div>
 
 <div class="card">
-    <button onclick="generatePDF()">Download CAM Report</button>
+<h3>Automated CAM Narrative</h3>
+<div class="result" id="camNarrative"></div>
+<button class="run" onclick="downloadPDF()">Download CAM PDF</button>
 </div>
-
 </div>
 
 <script>
 
-let globalData = {};
-
-function cleanNumber(v){
-    try{
-        return parseFloat(v.toString().replace(/,/g,'')) || 0;
-    }catch{return 0;}
+function safeNum(val){
+let num=parseFloat(val);
+return isNaN(num)?0:num;
 }
 
-function analyzeBank(file){
+let globalData={};
+let riskChartInstance=null;
 
-    return new Promise((resolve)=>{
-        const reader = new FileReader();
-        reader.onload = function(e){
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data,{type:'array'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet,{header:1});
-
-            let totalCredit = 0;
-            let balances = [];
-            let bounces = 0;
-            let suspicious = 0;
-
-            json.forEach(row=>{
-                row.forEach(cell=>{
-                    let value = cleanNumber(cell);
-                    if(value>0) totalCredit += value;
-
-                    let text = String(cell).toLowerCase();
-                    if(text.includes("bounce")||text.includes("return")) bounces++;
-
-                    if(value>500000) suspicious++;
-                });
-            });
-
-            resolve({
-                totalCredit,
-                avgBalance: balances.length ? balances.reduce((a,b)=>a+b)/balances.length : 0,
-                bounces,
-                suspicious
-            });
-        };
-        reader.readAsArrayBuffer(file);
-    });
+function showSlide(n){
+document.querySelectorAll(".slide").forEach(s=>s.classList.remove("active"));
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+document.getElementById("slide"+n).classList.add("active");
+document.getElementById("tab"+n).classList.add("active");
 }
 
-async function analyzeAll(){
-
-    let sales = cleanNumber(document.getElementById("sales").value);
-    let inv = cleanNumber(document.getElementById("inventory").value);
-    let debt = cleanNumber(document.getElementById("debtors").value);
-    let cred = cleanNumber(document.getElementById("creditors").value);
-    let profit = cleanNumber(document.getElementById("profit").value);
-    let emi = cleanNumber(document.getElementById("emi").value);
-
-    let bankFile = document.getElementById("bankFile").files[0];
-
-    let bankData = bankFile ? await analyzeBank(bankFile) : {totalCredit:0,bounces:0,suspicious:0};
-
-    let ca = inv + debt;
-    let cl = cred;
-    let nwc = ca - cl;
-    let cr = cl ? ca/cl : 0;
-    let mpbf = Math.max(0,(0.75*(inv+debt-cred))-nwc);
-    let turnover = 0.20*sales;
-    let wcLimit = Math.max(mpbf,turnover);
-
-    let hygiene = 100;
-    if(bankData.bounces>2) hygiene-=30;
-    if(bankData.suspicious>5) hygiene-=20;
-
-    let risk = 100;
-    if(cr<1) risk-=30;
-    if(nwc<0) risk-=20;
-    if(hygiene<70) risk-=20;
-
-    let decision = risk>=70?"Approve":risk>=50?"Review":"Reject";
-
-    globalData = {sales,nwc,cr,mpbf,wcLimit,risk,decision,bankData};
-
-    document.getElementById("results").innerHTML = `
-        NWC: ₹ ${nwc.toFixed(2)} <br>
-        Current Ratio: ${cr.toFixed(2)} <br>
-        MPBF: ₹ ${mpbf.toFixed(2)} <br>
-        WC Limit: ₹ ${wcLimit.toFixed(2)} <br>
-        Total Bank Credit: ₹ ${bankData.totalCredit.toFixed(2)} <br>
-        Bounce Count: ${bankData.bounces} <br>
-        Fraud Flags: ${bankData.suspicious} <br>
-        Hygiene Score: ${hygiene} <br>
-        <b>Risk Score: ${risk}</b> <br>
-        <b>Decision: ${decision}</b>
-    `;
-
-    drawCharts(mpbf,turnover,wcLimit,risk);
+// WORKING CAPITAL
+function runWC(){
+let s=safeNum(sales.value);
+let inv=safeNum(inventory.value);
+let d=safeNum(debtors.value);
+let c=safeNum(creditors.value);
+let ca=inv+d;
+let cl=c;
+let nwc=ca-cl;
+let cr=cl!==0?ca/cl:0;
+let mpbf=Math.max(0,(0.75*(inv+d-c))-nwc);
+let turnover=0.20*s;
+let limit=Math.max(mpbf,turnover);
+globalData.wc={s,nwc,cr,mpbf,limit};
+wcResult.innerHTML=`NWC: ₹ ${nwc.toFixed(2)}<br>
+Current Ratio: ${cr.toFixed(2)}<br>
+MPBF: ₹ ${mpbf.toFixed(2)}<br>
+WC Limit: ₹ ${limit.toFixed(2)}`;
 }
 
-function drawCharts(mpbf,turnover,wcLimit,risk){
-
-    new Chart(document.getElementById("eligibilityChart"),{
-        type:"bar",
-        data:{
-            labels:["MPBF","Turnover Method","Final Limit"],
-            datasets:[{
-                data:[mpbf,turnover,wcLimit],
-                backgroundColor:["#3498db","#9b59b6","#2ecc71"]
-            }]
-        }
-    });
-
-    new Chart(document.getElementById("riskChart"),{
-        type:"doughnut",
-        data:{
-            labels:["Risk Score","Remaining"],
-            datasets:[{
-                data:[risk,100-risk],
-                backgroundColor:["#2ecc71","#2c3e50"]
-            }]
-        }
-    });
+// AGRI
+function runAgri(){
+let p=safeNum(profit.value);
+let d=safeNum(dep.value);
+let t=safeNum(tax.value);
+let emi=safeNum(emiAgri.value);
+let u=safeNum(undoc.value);
+let loan=safeNum(loanReq.value);
+let nca=p+d-t;
+let scale=loan>3000000?0.70:0.60;
+let monthly=((nca*scale)/12)-emi+(u*0.42/12);
+let eligible=monthly>0?monthly/0.14:0;
+globalData.agri={nca,monthly,eligible};
+agResult.innerHTML=`NCA: ₹ ${nca.toFixed(2)}<br>
+Monthly Surplus: ₹ ${monthly.toFixed(2)}<br>
+Eligible Loan: ₹ ${eligible.toFixed(2)}`;
 }
 
-function generatePDF(){
+// MULTI-BANK ENGINE
+function runPerfios(){
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+let file=bankFile.files[0];
+if(!file){alert("Upload bank statement");return;}
 
-    doc.text("Credit Appraisal Memorandum",20,20);
+const reader=new FileReader();
+reader.onload=function(e){
 
-    doc.text(`Sales: ${globalData.sales}`,20,40);
-    doc.text(`NWC: ${globalData.nwc}`,20,50);
-    doc.text(`Current Ratio: ${globalData.cr}`,20,60);
-    doc.text(`MPBF: ${globalData.mpbf}`,20,70);
-    doc.text(`WC Limit: ${globalData.wcLimit}`,20,80);
-    doc.text(`Risk Score: ${globalData.risk}`,20,90);
-    doc.text(`Decision: ${globalData.decision}`,20,100);
+const data=new Uint8Array(e.target.result);
+const workbook=XLSX.read(data,{type:'array'});
+const sheet=workbook.Sheets[workbook.SheetNames[0]];
+const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
 
-    doc.save("CAM_Report.pdf");
+if(rows.length<2){
+bankResult.innerHTML="Invalid statement.";
+return;
+}
+
+let headers=rows[0].map(h=>String(h).toLowerCase());
+
+function findColumn(keys){
+return headers.findIndex(h=>keys.some(k=>h.includes(k)));
+}
+
+let creditCol=findColumn(["credit","cr","deposit","paid in","inflow"]);
+let debitCol=findColumn(["debit","dr","withdraw","paid out","outflow"]);
+let amountCol=findColumn(["amount"]);
+let balanceCol=findColumn(["balance"]);
+let descCol=findColumn(["narration","description","particular","remarks"]);
+
+let singleMode=false;
+if(creditCol===-1 && debitCol===-1 && amountCol!==-1){
+singleMode=true;
+}
+
+let totalCredit=0,totalDebit=0,cashCredit=0,transferCredit=0,bounceCount=0;
+let negativeBalanceFlag=false;
+
+for(let i=1;i<rows.length;i++){
+
+let row=rows[i];
+let narration=String(row[descCol]||"").toLowerCase();
+let credit=0,debit=0;
+
+if(singleMode){
+let amt=safeNum(String(row[amountCol]||"").replace(/,/g,''));
+if(amt>0){credit=amt;}else{debit=Math.abs(amt);}
+}else{
+credit=safeNum(String(row[creditCol]||"").replace(/,/g,''));
+debit=safeNum(String(row[debitCol]||"").replace(/,/g,''));
+}
+
+if(credit>0){
+totalCredit+=credit;
+if(narration.includes("cash")||narration.includes("atm")||narration.includes("self")){
+cashCredit+=credit;
+}else{
+transferCredit+=credit;
+}
+}
+
+if(debit>0){totalDebit+=debit;}
+
+if(narration.includes("return")||narration.includes("bounce")||narration.includes("dishonour")){
+bounceCount++;
+}
+
+if(balanceCol!==-1){
+let bal=safeNum(String(row[balanceCol]||"").replace(/,/g,''));
+if(bal<0){negativeBalanceFlag=true;}
+}
+}
+
+let cashRatio=totalCredit>0?cashCredit/totalCredit:0;
+let hygiene=100-(bounceCount*10)-(cashRatio*20);
+if(hygiene<0)hygiene=0;
+
+let avgMonthly=totalCredit/12;
+let stressFactor=safeNum(stressLevel.value)||1;
+let existing=safeNum(existingEmi.value);
+let proposed=safeNum(proposedEmi.value);
+
+let stressedIncome=avgMonthly*stressFactor;
+let surplus=stressedIncome-existing-proposed;
+let stressLoan=surplus>0?surplus/0.14:0;
+
+let risk=100;
+if(hygiene<70)risk-=20;
+if(surplus<0)risk-=30;
+if(cashRatio>0.5)risk-=10;
+if(negativeBalanceFlag)risk-=10;
+if(risk<0)risk=0;
+
+let decision=risk>=70?"Approve":risk>=50?"Review":"Reject";
+
+globalData.bank={totalCredit,bounceCount,hygiene,risk,decision,stressLoan};
+
+bankResult.innerHTML=
+`Mode: ${singleMode?"Single Amount":"Debit/Credit"}<br>
+Total Credit: ₹ ${totalCredit.toFixed(2)}<br>
+Total Debit: ₹ ${totalDebit.toFixed(2)}<br>
+Cash Credit: ₹ ${cashCredit.toFixed(2)}<br>
+Transfer Credit: ₹ ${transferCredit.toFixed(2)}<br>
+Cash Ratio: ${(cashRatio*100).toFixed(2)}%<br>
+Bounce Count: ${bounceCount}<br>
+Negative Balance: ${negativeBalanceFlag?"YES":"NO"}<br>
+Hygiene Score: ${hygiene.toFixed(0)}<br>
+Stress Eligible Loan: ₹ ${stressLoan.toFixed(2)}<br>
+Risk Score: ${risk}<br>
+Decision: ${decision}`;
+
+if(riskChartInstance){riskChartInstance.destroy();}
+riskChartInstance=new Chart(document.getElementById("riskChart"),{
+type:"doughnut",
+data:{
+labels:["Risk Score","Remaining"],
+datasets:[{data:[risk,100-risk],backgroundColor:["#2ecc71","#e74c3c"]}]
+}
+});
+
+generateNarrative();
+};
+
+reader.readAsArrayBuffer(file);
+}
+
+function generateNarrative(){
+let wc=globalData.wc||{s:0,nwc:0,cr:0};
+let bank=globalData.bank||{totalCredit:0,bounceCount:0,hygiene:0,risk:0,decision:"Review",stressLoan:0};
+let text=`The borrower reports annual turnover of ₹${wc.s}. 
+Net Working Capital stands at ₹${wc.nwc}. 
+Bank credit inflow assessed at ₹${bank.totalCredit}. 
+Cheque return instances ${bank.bounceCount}. 
+Banking hygiene score ${bank.hygiene}. 
+Stress eligible funding ₹${bank.stressLoan}. 
+Overall risk score ${bank.risk}. 
+Recommendation: ${bank.decision}.`;
+camNarrative.innerHTML=text;
+globalData.narrative=text;
+}
+
+function downloadPDF(){
+const { jsPDF } = window.jspdf;
+const doc=new jsPDF();
+doc.text("Credit Appraisal Memorandum",20,20);
+doc.text(globalData.narrative||"",20,40,{maxWidth:170});
+doc.save("CAM_Report.pdf");
 }
 
 </script>
