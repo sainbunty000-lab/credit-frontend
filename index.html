@@ -169,25 +169,86 @@ bankResult.innerHTML=
 function downloadCAM(){
 
 const { jsPDF } = window.jspdf;
-let doc = new jsPDF();
+let doc = new jsPDF("p","mm","a4");
 
-doc.text("CREDIT APPRAISAL MEMORANDUM",20,20);
-doc.text("WC: ₹"+(globalData.wc||0),20,40);
-doc.text("TL: ₹"+(globalData.tl_eligible||0),20,50);
-doc.text("Agri: ₹"+(globalData.agri_eligible||0),20,60);
-doc.text("DSCR: "+(globalData.dscr||0),20,70);
+let wc = globalData.wc || 0;
+let wc_turnover = globalData.wc_turnover || 0;
+let mpbf = globalData.mpbf || 0;
+
+let tl = globalData.tl_eligible || 0;
+let dscr = globalData.dscr || 0;
+let cash = globalData.cash_accrual || 0;
+
+let agri = globalData.agri_eligible || 0;
+let nca = globalData.nca || 0;
+
+let credit = bankingData.total_credit || 0;
+let debit = bankingData.total_debit || 0;
+let bounce = bankingData.bounce_count || 0;
+let hygiene = bankingData.hygiene_score || 0;
+
+let finalLimit = Math.max(wc, tl, agri);
+
+doc.setFontSize(14);
+doc.text("AGRI / WC CALCULATOR - CREDIT APPRAISAL MEMORANDUM",20,20);
+
+doc.setFontSize(11);
+
+let paragraph1 =
+`1. WORKING CAPITAL ASSESSMENT:
+
+Annual turnover considered at ₹${wc_turnover/0.20}.
+As per RBI 20% method, working capital assessed at ₹${wc_turnover}.
+Net working capital gap assessed under Tandon II method yields MPBF of ₹${mpbf}.
+Final permissible WC limit derived at ₹${wc}.`;
+
+doc.text(paragraph1,20,40,{maxWidth:170});
+
+let paragraph2 =
+`2. TERM LOAN EVALUATION:
+
+Cash accrual computed at ₹${cash}.
+Annual EMI obligation considered for DSCR calculation.
+DSCR evaluated at ${dscr}.
+Based on surplus cash generation, term loan eligibility derived at ₹${tl}.`;
+
+doc.text(paragraph2,20,85,{maxWidth:170});
+
+let paragraph3 =
+`3. AGRICULTURE MODEL:
+
+Net Cash Accrual (after tax adjustment) calculated at ₹${nca}.
+Scaling factor applied as per internal stress model.
+Monthly surplus derived and stressed at 14%.
+Agriculture eligibility assessed at ₹${agri}.`;
+
+doc.text(paragraph3,20,120,{maxWidth:170});
 
 doc.addPage();
-let img=document.getElementById("chart").toDataURL("image/png");
-doc.addImage(img,"PNG",15,30,180,100);
 
-doc.addPage();
-doc.text("Banking PERFIOS",20,20);
-doc.text("Credit: ₹"+(bankingData.total_credit||0),20,40);
-doc.text("Debit: ₹"+(bankingData.total_debit||0),20,50);
-doc.text("Bounce: "+(bankingData.bounce_count||0),20,60);
+let paragraph4 =
+`4. BANKING PERFIOS ANALYSIS:
 
-doc.save("Final_CAM_Report.pdf");
+Total credit turnover observed at ₹${credit}.
+Total debit turnover observed at ₹${debit}.
+Cheque return instances observed: ${bounce}.
+Banking hygiene score computed at ${hygiene}/100.
+
+Overall banking conduct considered ${hygiene>=80?"Satisfactory":"Moderate to Stressed"}.`;
+
+doc.text(paragraph4,20,30,{maxWidth:170});
+
+let paragraph5 =
+`5. FINAL CREDIT RECOMMENDATION:
+
+Based on financial assessment, working capital gap, DSCR evaluation,
+agriculture surplus stress test, and banking behaviour analysis,
+the proposal is recommended for sanction of ₹${finalLimit},
+subject to standard documentation and compliance conditions.`;
+
+doc.text(paragraph5,20,80,{maxWidth:170});
+
+doc.save("Premium_CAM_Report.pdf");
 }
 </script>
 
