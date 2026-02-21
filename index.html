@@ -1,111 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Agri / WC Calculator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agri Credit Engine</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Segoe UI;background:#0f172a;color:white;display:flex}
-.sidebar{width:260px;background:#111827;height:100vh;padding:20px;position:fixed}
-.sidebar h2{color:#22c55e}
-.sidebar button{width:100%;padding:10px;margin:8px 0;background:#1f2937;border:none;color:white;border-radius:8px;font-weight:600;cursor:pointer}
-.sidebar button:hover{background:#22c55e}
-.main{margin-left:280px;padding:25px;width:100%}
-.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px}
-input{width:100%;padding:8px;margin-bottom:10px;border:none;border-radius:6px}
-.run{background:#22c55e;border:none;padding:10px;width:100%;font-weight:700;border-radius:8px;cursor:pointer}
-.kpi{display:flex;gap:15px;flex-wrap:wrap}
-.kpi div{flex:1;padding:15px;border-radius:8px;text-align:center;font-weight:bold}
-.green{background:#16a34a}
-.orange{background:#f59e0b}
-.blue{background:#3b82f6}
-.red{background:#dc2626}
+
+body{
+margin:0;
+font-family:'Segoe UI';
+background:#0b1120;
+color:white;
+display:flex;
+}
+
+/* ---------- SIDEBAR ---------- */
+
+.sidebar{
+width:250px;
+height:100vh;
+background:linear-gradient(180deg,#0f172a,#111827);
+padding:25px 15px;
+position:fixed;
+box-shadow:2px 0 15px rgba(0,0,0,0.6);
+}
+
+.sidebar h2{
+color:#22c55e;
+margin-bottom:30px;
+}
+
+.menu-btn{
+width:100%;
+padding:12px;
+margin-bottom:12px;
+border-radius:8px;
+border:none;
+background:#1e293b;
+color:#cbd5e1;
+font-weight:600;
+cursor:pointer;
+transition:0.3s;
+}
+
+.menu-btn:hover{
+background:#22c55e;
+color:black;
+}
+
+.run-btn{
+background:#22c55e;
+color:black;
+font-weight:700;
+}
+
+/* ---------- MAIN ---------- */
+
+.main{
+margin-left:270px;
+padding:30px;
+width:100%;
+}
+
+/* ---------- SLIDES ---------- */
+
+.slide{
+display:none;
+animation:fade 0.3s ease-in-out;
+}
+
+@keyframes fade{
+from{opacity:0}
+to{opacity:1}
+}
+
+/* ---------- CARDS ---------- */
+
+.card{
+background:#111827;
+padding:20px;
+border-radius:12px;
+margin-bottom:20px;
+box-shadow:0 0 15px rgba(0,0,0,0.4);
+}
+
+input{
+width:100%;
+padding:10px;
+margin-bottom:12px;
+border:none;
+border-radius:6px;
+background:#1e293b;
+color:white;
+}
+
+/* ---------- KPI ---------- */
+
+.kpi-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:15px;
+margin-bottom:25px;
+}
+
+.kpi{
+padding:20px;
+border-radius:10px;
+text-align:center;
+font-weight:700;
+font-size:18px;
+}
+
+.green{background:#16a34a;}
+.blue{background:#2563eb;}
+.orange{background:#f59e0b;}
+.red{background:#dc2626;}
+
 </style>
 </head>
 
 <body>
 
 <div class="sidebar">
-<h2>Agri / WC Calculator</h2>
-<button onclick="show('wc')">WC</button>
-<button onclick="show('tl')">TL</button>
-<button onclick="show('agri')">Agri</button>
-<button onclick="show('bank')">Banking</button>
-<button onclick="show('dashboard')">Dashboard</button>
-<button class="run" onclick="runFull()">Run Full</button>
-<button onclick="downloadCAM()">Download CAM</button>
+<h2>Credit Engine</h2>
+
+<button class="menu-btn" onclick="showSlide('wc')">Working Capital</button>
+<button class="menu-btn" onclick="showSlide('tl')">Term Loan</button>
+<button class="menu-btn" onclick="showSlide('agri')">Agriculture</button>
+<button class="menu-btn" onclick="showSlide('dashboard')">Dashboard</button>
+
+<button class="menu-btn run-btn" onclick="runAnalysis()">Run Analysis</button>
+
 </div>
 
 <div class="main">
 
-<div id="wc" class="card">
+<!-- WC -->
+<div id="wc" class="slide card">
 <h3>Working Capital</h3>
 <input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
-<button class="run" onclick="runFull()">Run WC</button>
 </div>
 
-<div id="tl" class="card" style="display:none">
+<!-- TL -->
+<div id="tl" class="slide card">
 <h3>Term Loan</h3>
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
-<button class="run" onclick="runFull()">Run TL</button>
 </div>
 
-<div id="agri" class="card" style="display:none">
+<!-- AGRI -->
+<div id="agri" class="slide card">
 <h3>Agriculture</h3>
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="undoc" placeholder="Undocumented Income">
-<button class="run" onclick="runFull()">Run Agri</button>
 </div>
 
-<div id="bank" class="card" style="display:none">
-<h3>Banking PERFIOS</h3>
-<input type="file" id="bankFile">
-<button class="run" onclick="uploadBank()">Run Banking</button>
-<div id="bankResult"></div>
+<!-- DASHBOARD -->
+<div id="dashboard" class="slide">
+
+<div class="kpi-grid">
+<div id="wc_kpi" class="kpi green">WC ₹0</div>
+<div id="tl_kpi" class="kpi blue">TL ₹0</div>
+<div id="agri_kpi" class="kpi orange">Agri ₹0</div>
+<div id="risk_kpi" class="kpi red">Risk 0</div>
 </div>
 
-<div id="dashboard" style="display:none">
-
-<div class="kpi">
-<div id="wc_kpi" class="green">WC ₹0</div>
-<div id="tl_kpi" class="blue">TL ₹0</div>
-<div id="agri_kpi" class="orange">Agri ₹0</div>
-<div id="risk_kpi" class="red">Risk 0</div>
+<div class="card">
+<canvas id="resultChart"></canvas>
 </div>
 
-<canvas id="chart"></canvas>
-
-<div id="losSummary"></div>
+<div class="card" id="summaryBox"></div>
 
 </div>
 
 </div>
 
 <script>
+
 const API="https://credit-backend-production-6a6d.up.railway.app/analyze";
-const BANK="https://credit-backend-production-6a6d.up.railway.app/banking";
 
 let chart;
-let globalData={};
-let bankingData={};
+let results={};
 
-function show(s){
-["wc","tl","agri","bank","dashboard"].forEach(id=>{
-document.getElementById(id).style.display="none";
-});
-document.getElementById(s).style.display="block";
+function showSlide(id){
+document.querySelectorAll('.slide').forEach(s=>s.style.display="none");
+document.getElementById(id).style.display="block";
 }
 
-async function runFull(){
+showSlide("wc");
 
-const payload={
+async function runAnalysis(){
+
+let payload={
 turnover:+turnover.value||0,
 inventory:+inventory.value||0,
 debtors:+debtors.value||0,
@@ -117,139 +208,61 @@ tax_paid:+tax_paid.value||0,
 undocumented_income:+undoc.value||0
 };
 
-const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-const data=await res.json();
-globalData=data;
+let res=await fetch(API,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(payload)
+});
 
-wc_kpi.innerHTML="WC ₹"+data.wc;
-tl_kpi.innerHTML="TL ₹"+data.tl_eligible;
-agri_kpi.innerHTML="Agri ₹"+data.agri_eligible;
+results=await res.json();
 
-let riskScore=(data.dscr>1.25?85:data.dscr>1?65:40);
-risk_kpi.innerHTML="Risk "+riskScore;
+updateDashboard();
+showSlide("dashboard");
+}
 
-losSummary.innerHTML=
-"DSCR: "+data.dscr+
-"<br>Cash Accrual: ₹"+data.cash_accrual+
-"<br>Recommended: ₹"+Math.max(data.wc,data.tl_eligible,data.agri_eligible)+
-"<br>Decision: "+(riskScore>60?"APPROVE":"REVIEW");
+function updateDashboard(){
+
+let wc=results.wc||0;
+let tl=results.tl_eligible||0;
+let agri=results.agri_eligible||0;
+let dscr=results.dscr||0;
+let cash=results.cash_accrual||0;
+
+wc_kpi.innerHTML="WC ₹"+wc;
+tl_kpi.innerHTML="TL ₹"+tl;
+agri_kpi.innerHTML="Agri ₹"+agri;
+
+let risk=dscr>1.25?85:dscr>1?65:40;
+risk_kpi.innerHTML="Risk "+risk;
 
 if(chart) chart.destroy();
 
-chart=new Chart(document.getElementById("chart"),{
-type:"bar",
+chart=new Chart(document.getElementById("resultChart"),{
+type:'bar',
 data:{
-labels:["WC","TL","Agri"],
+labels:["Working Capital","Term Loan","Agriculture"],
 datasets:[{
-data:[data.wc,data.tl_eligible,data.agri_eligible],
-backgroundColor:["#22c55e","#3b82f6","#f59e0b"]
+label:"Eligibility",
+data:[wc,tl,agri],
+backgroundColor:["#16a34a","#2563eb","#f59e0b"]
 }]
+},
+options:{
+responsive:true,
+plugins:{
+legend:{display:true}
+}
 }
 });
 
-show("dashboard");
+summaryBox.innerHTML=`
+<b>DSCR:</b> ${dscr}<br>
+<b>Cash Accrual:</b> ₹${cash}<br>
+<b>Final Recommended:</b> ₹${Math.max(wc,tl,agri)}<br>
+<b>Decision:</b> ${risk>60?"APPROVE":"REVIEW"}
+`;
 }
 
-async function uploadBank(){
-const file=document.getElementById("bankFile").files[0];
-let form=new FormData();
-form.append("file",file);
-
-const res=await fetch(BANK,{method:"POST",body:form});
-const data=await res.json();
-bankingData=data;
-
-bankResult.innerHTML=
-"Total Credit: ₹"+data.total_credit+
-"<br>Total Debit: ₹"+data.total_debit+
-"<br>Bounce: "+data.bounce_count+
-"<br>Hygiene: "+data.hygiene_score;
-}
-
-function downloadCAM(){
-
-const { jsPDF } = window.jspdf;
-let doc = new jsPDF("p","mm","a4");
-
-let wc = globalData.wc || 0;
-let wc_turnover = globalData.wc_turnover || 0;
-let mpbf = globalData.mpbf || 0;
-
-let tl = globalData.tl_eligible || 0;
-let dscr = globalData.dscr || 0;
-let cash = globalData.cash_accrual || 0;
-
-let agri = globalData.agri_eligible || 0;
-let nca = globalData.nca || 0;
-
-let credit = bankingData.total_credit || 0;
-let debit = bankingData.total_debit || 0;
-let bounce = bankingData.bounce_count || 0;
-let hygiene = bankingData.hygiene_score || 0;
-
-let finalLimit = Math.max(wc, tl, agri);
-
-doc.setFontSize(14);
-doc.text("AGRI / WC CALCULATOR - CREDIT APPRAISAL MEMORANDUM",20,20);
-
-doc.setFontSize(11);
-
-let paragraph1 =
-`1. WORKING CAPITAL ASSESSMENT:
-
-Annual turnover considered at ₹${wc_turnover/0.20}.
-As per RBI 20% method, working capital assessed at ₹${wc_turnover}.
-Net working capital gap assessed under Tandon II method yields MPBF of ₹${mpbf}.
-Final permissible WC limit derived at ₹${wc}.`;
-
-doc.text(paragraph1,20,40,{maxWidth:170});
-
-let paragraph2 =
-`2. TERM LOAN EVALUATION:
-
-Cash accrual computed at ₹${cash}.
-Annual EMI obligation considered for DSCR calculation.
-DSCR evaluated at ${dscr}.
-Based on surplus cash generation, term loan eligibility derived at ₹${tl}.`;
-
-doc.text(paragraph2,20,85,{maxWidth:170});
-
-let paragraph3 =
-`3. AGRICULTURE MODEL:
-
-Net Cash Accrual (after tax adjustment) calculated at ₹${nca}.
-Scaling factor applied as per internal stress model.
-Monthly surplus derived and stressed at 14%.
-Agriculture eligibility assessed at ₹${agri}.`;
-
-doc.text(paragraph3,20,120,{maxWidth:170});
-
-doc.addPage();
-
-let paragraph4 =
-`4. BANKING PERFIOS ANALYSIS:
-
-Total credit turnover observed at ₹${credit}.
-Total debit turnover observed at ₹${debit}.
-Cheque return instances observed: ${bounce}.
-Banking hygiene score computed at ${hygiene}/100.
-
-Overall banking conduct considered ${hygiene>=80?"Satisfactory":"Moderate to Stressed"}.`;
-
-doc.text(paragraph4,20,30,{maxWidth:170});
-
-let paragraph5 =
-`5. FINAL CREDIT RECOMMENDATION:
-
-Based on financial assessment, working capital gap, DSCR evaluation,
-agriculture surplus stress test, and banking behaviour analysis,
-the proposal is recommended for sanction of ₹${finalLimit},
-subject to standard documentation and compliance conditions.`;
-
-doc.text(paragraph5,20,80,{maxWidth:170});
-
-doc.save("Premium_CAM_Report.pdf");
-}
 </script>
 
 </body>
