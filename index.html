@@ -8,21 +8,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
 :root{
 --bg:#0b1120;
---card:#111827;
---text:#ffffff;
+--card:rgba(255,255,255,0.08);
+--text:#fff;
 --accent:#22c55e;
 }
-
 body.light{
 --bg:#f1f5f9;
 --card:#ffffff;
---text:#000000;
+--text:#000;
 --accent:#2563eb;
 }
-
 body{
 margin:0;
 font-family:'Segoe UI';
@@ -31,23 +28,19 @@ color:var(--text);
 display:flex;
 transition:0.3s;
 }
-
 .sidebar{
 width:260px;
 height:100vh;
 background:linear-gradient(180deg,#0f172a,#111827);
 padding:20px;
 position:fixed;
+backdrop-filter:blur(10px);
 }
-
-.sidebar h2{
-color:var(--accent);
-}
-
+.sidebar h2{color:var(--accent);}
 .btn{
 width:100%;
 padding:10px;
-margin:8px 0;
+margin:6px 0;
 border:none;
 border-radius:8px;
 cursor:pointer;
@@ -55,26 +48,15 @@ font-weight:600;
 background:#1e293b;
 color:white;
 }
-
-.btn:hover{
-background:var(--accent);
-color:black;
-}
-
-.main{
-margin-left:280px;
-padding:30px;
-width:100%;
-}
-
+.btn:hover{background:var(--accent);color:black;}
+.main{margin-left:280px;padding:25px;width:100%;}
 .card{
 background:var(--card);
 padding:20px;
 border-radius:12px;
 margin-bottom:20px;
-box-shadow:0 0 15px rgba(0,0,0,0.3);
+backdrop-filter:blur(12px);
 }
-
 input{
 width:100%;
 padding:10px;
@@ -84,27 +66,22 @@ border-radius:6px;
 background:#1e293b;
 color:white;
 }
-
 .slide{display:none;}
-
 .kpi-grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
 gap:15px;
 }
-
 .kpi{
 padding:20px;
 border-radius:10px;
 text-align:center;
 font-weight:bold;
 }
-
 .green{background:#16a34a;}
 .blue{background:#2563eb;}
 .orange{background:#f59e0b;}
 .red{background:#dc2626;}
-
 </style>
 </head>
 
@@ -119,6 +96,7 @@ font-weight:bold;
 <button class="btn" onclick="showSlide('bank')">Banking</button>
 <button class="btn" onclick="showSlide('dashboard')">Dashboard</button>
 
+<button class="btn" onclick="toggleMode()">Mode: <span id="modeText">Backend</span></button>
 <button class="btn" onclick="toggleTheme()">Dark/Light</button>
 <button class="btn" onclick="downloadCAM()">Download CAM</button>
 </div>
@@ -132,7 +110,8 @@ font-weight:bold;
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
-<button class="btn" onclick="runAnalysis()">Calculate</button>
+<button class="btn" onclick="calculateWC()">Calculate WC</button>
+<div id="wcResult"></div>
 </div>
 
 <!-- TL -->
@@ -141,7 +120,8 @@ font-weight:bold;
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
-<button class="btn" onclick="runAnalysis()">Calculate</button>
+<button class="btn" onclick="calculateTL()">Calculate TL</button>
+<div id="tlResult"></div>
 </div>
 
 <!-- AGRI -->
@@ -150,7 +130,10 @@ font-weight:bold;
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="loan_required" placeholder="Loan Required">
 <input id="undoc" placeholder="Undocumented Income">
-<button class="btn" onclick="runAnalysis()">Calculate</button>
+<label>Stress %</label>
+<input type="range" min="10" max="25" value="14" id="stress">
+<button class="btn" onclick="calculateAgri()">Calculate Agri</button>
+<div id="agriResult"></div>
 </div>
 
 <!-- BANK -->
@@ -163,23 +146,13 @@ font-weight:bold;
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="slide">
-
 <div class="kpi-grid">
 <div id="wc_kpi" class="kpi green">WC ₹0</div>
 <div id="tl_kpi" class="kpi blue">TL ₹0</div>
 <div id="agri_kpi" class="kpi orange">Agri ₹0</div>
 <div id="risk_kpi" class="kpi red">Risk 0</div>
 </div>
-
-<div class="card">
-<canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-<label>Stress Slider (Agri %) </label>
-<input type="range" min="10" max="25" value="14" id="stress">
-</div>
-
+<div class="card"><canvas id="chart"></canvas></div>
 </div>
 
 </div>
@@ -189,102 +162,119 @@ font-weight:bold;
 const API="https://credit-backend-production-6a6d.up.railway.app/analyze";
 const BANK="https://credit-backend-production-6a6d.up.railway.app/banking";
 
-let chart;
-let dataStore={};
+let mode="backend";
 let hygieneScore=80;
+let results={wc:0,tl:0,agri:0,risk:0,rating:"B",final:0};
 
 function showSlide(id){
 document.querySelectorAll('.slide').forEach(s=>s.style.display="none");
 document.getElementById(id).style.display="block";
 }
-
 showSlide("wc");
 
-function toggleTheme(){
-document.body.classList.toggle("light");
+function toggleTheme(){document.body.classList.toggle("light");}
+
+function toggleMode(){
+mode = mode==="backend"?"local":"backend";
+modeText.innerText = mode==="backend"?"Backend":"Local";
 }
 
-async function runAnalysis(){
+function safe(v){return parseFloat(v)||0;}
 
-let payload={
-turnover:+turnover.value||0,
-inventory:+inventory.value||0,
-debtors:+debtors.value||0,
-creditors:+creditors.value||0,
-net_profit:+net_profit.value||0,
-depreciation:+depreciation.value||0,
-tax_paid:+tax_paid.value||0,
-monthly_emi:+monthly_emi.value||0,
-loan_required:+loan_required.value||0,
-undocumented_income:+undoc.value||0,
-hygiene_score:hygieneScore
-};
+async function calculateWC(){
+let turnover=safe(turnover.value);
+let inv=safe(inventory.value);
+let deb=safe(debtors.value);
+let cred=safe(creditors.value);
 
-let res=await fetch(API,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(payload)
-});
+let wc_turnover=turnover*0.20;
+let mpbf=0.75*((inv+deb)-cred);
+results.wc=Math.min(wc_turnover,mpbf);
 
-dataStore=await res.json();
-
+wcResult.innerHTML="Final WC ₹"+results.wc;
 updateDashboard();
-showSlide("dashboard");
+}
+
+async function calculateTL(){
+let profit=safe(net_profit.value);
+let dep=safe(depreciation.value);
+let emi=safe(monthly_emi.value);
+
+let accrual=profit+dep;
+let annual=emi*12;
+let dscr=annual>0?accrual/annual:0;
+let surplus=accrual-annual;
+results.tl=surplus>0?surplus*6:0;
+
+tlResult.innerHTML="TL Eligible ₹"+results.tl+" DSCR:"+dscr.toFixed(2);
+updateDashboard();
+}
+
+async function calculateAgri(){
+let profit=safe(net_profit.value);
+let dep=safe(depreciation.value);
+let tax=safe(tax_paid.value);
+let emi=safe(monthly_emi.value);
+let loan=safe(loan_required.value);
+let und=safe(undoc.value);
+let stress=safe(stress.value);
+
+let nca=profit+dep-tax;
+let scaling=loan>3000000?0.70:0.60;
+let scaled=nca*scaling;
+let monthly=(scaled/12)-emi+((und*0.42)/12);
+results.agri=monthly>0?monthly/(stress/100):0;
+
+agriResult.innerHTML="Agri Eligible ₹"+results.agri;
+updateDashboard();
+}
+
+async function uploadBank(){
+const file=document.getElementById("bankFile").files[0];
+let form=new FormData();
+form.append("file",file);
+let res=await fetch(BANK,{method:"POST",body:form});
+let data=await res.json();
+hygieneScore=data.hygiene_score;
+bankResult.innerHTML="Hygiene:"+hygieneScore;
 }
 
 function updateDashboard(){
 
-wc_kpi.innerHTML="WC ₹"+dataStore.wc;
-tl_kpi.innerHTML="TL ₹"+dataStore.tl_eligible;
-agri_kpi.innerHTML="Agri ₹"+dataStore.agri_eligible;
-risk_kpi.innerHTML="Risk "+dataStore.risk_score+" ("+dataStore.rating+")";
+let riskScore = (results.wc>0?20:0)+(results.tl>0?20:0)+(results.agri>0?20:0)+(hygieneScore*0.4);
+riskScore=Math.min(100,Math.round(riskScore));
+let rating=riskScore>85?"AAA":riskScore>75?"AA":riskScore>65?"A":riskScore>55?"BBB":"BB";
 
-if(chart) chart.destroy();
+wc_kpi.innerHTML="WC ₹"+results.wc;
+tl_kpi.innerHTML="TL ₹"+results.tl;
+agri_kpi.innerHTML="Agri ₹"+results.agri;
+risk_kpi.innerHTML="Risk "+riskScore+" "+rating;
 
+if(window.chart) chart.destroy();
 chart=new Chart(document.getElementById("chart"),{
-type:'bar',
+type:"bar",
 data:{
 labels:["WC","TL","Agri"],
-datasets:[{
-data:[dataStore.wc,dataStore.tl_eligible,dataStore.agri_eligible],
-backgroundColor:["#16a34a","#2563eb","#f59e0b"]
-}]
+datasets:[{data:[results.wc,results.tl,results.agri],
+backgroundColor:["#16a34a","#2563eb","#f59e0b"]}]
 },
 options:{animation:{duration:1000}}
 });
 
-}
-
-async function uploadBank(){
-
-const file=document.getElementById("bankFile").files[0];
-let form=new FormData();
-form.append("file",file);
-
-let res=await fetch(BANK,{method:"POST",body:form});
-let data=await res.json();
-
-hygieneScore=data.hygiene_score;
-
-bankResult.innerHTML=
-"Credit: ₹"+data.total_credit+
-"<br>Debit: ₹"+data.total_debit+
-"<br>Bounce: "+data.bounce_count+
-"<br>Hygiene Score: "+data.hygiene_score;
+results.risk=riskScore;
+results.rating=rating;
+results.final=Math.max(results.wc,results.tl,results.agri);
 }
 
 function downloadCAM(){
-
 const { jsPDF } = window.jspdf;
 let doc=new jsPDF();
-
 doc.text("CREDIT APPRAISAL MEMO",20,20);
-doc.text("Working Capital: ₹"+dataStore.wc,20,40);
-doc.text("Term Loan: ₹"+dataStore.tl_eligible,20,50);
-doc.text("Agriculture: ₹"+dataStore.agri_eligible,20,60);
-doc.text("Risk Score: "+dataStore.risk_score+" Rating:"+dataStore.rating,20,70);
-doc.text("Final Recommended Limit: ₹"+dataStore.final_limit,20,80);
-
+doc.text("WC ₹"+results.wc,20,40);
+doc.text("TL ₹"+results.tl,20,50);
+doc.text("Agri ₹"+results.agri,20,60);
+doc.text("Risk "+results.risk+" Rating:"+results.rating,20,70);
+doc.text("Final Limit ₹"+results.final,20,80);
 doc.save("CAM_Report.pdf");
 }
 
