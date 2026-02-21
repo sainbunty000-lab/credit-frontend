@@ -3,36 +3,58 @@
 <head>
 <title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{
+body {
 margin:0;
 font-family:Segoe UI;
-background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+background:#0f172a;
 color:white;
+display:flex;
 }
 
-header{
+/* Sidebar */
+.sidebar{
+width:240px;
+background:#111827;
+height:100vh;
 padding:20px;
-text-align:center;
-font-size:22px;
-font-weight:bold;
+position:fixed;
 }
 
-.container{
+.sidebar h2{
+color:#22c55e;
+margin-bottom:30px;
+}
+
+.sidebar button{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+background:#1f2937;
+border:none;
+color:white;
+cursor:pointer;
+border-radius:6px;
+}
+
+.sidebar button:hover{
+background:#22c55e;
+}
+
+/* Main */
+.main{
+margin-left:260px;
 padding:20px;
-max-width:1000px;
-margin:auto;
+width:100%;
 }
 
 .card{
-background:rgba(255,255,255,0.08);
+background:#1e293b;
 padding:20px;
-border-radius:12px;
+border-radius:10px;
 margin-bottom:20px;
-backdrop-filter:blur(10px);
 }
 
 input{
@@ -40,60 +62,93 @@ width:100%;
 padding:8px;
 margin-bottom:10px;
 border:none;
-border-radius:6px;
+border-radius:5px;
 }
 
-button{
-width:100%;
-padding:10px;
+button.run{
+background:#22c55e;
 border:none;
-border-radius:6px;
-background:#2ecc71;
+padding:10px;
+width:100%;
 font-weight:bold;
 cursor:pointer;
+border-radius:6px;
 }
 
-.result{
-margin-top:15px;
-font-size:14px;
+.kpi{
+display:flex;
+gap:20px;
+flex-wrap:wrap;
+}
+
+.kpi div{
+background:#0ea5e9;
+padding:15px;
+border-radius:8px;
+min-width:150px;
+text-align:center;
 }
 </style>
 </head>
 
 <body>
 
-<header>🌾 Agri / WC Calculator</header>
+<div class="sidebar">
+<h2>Agri / WC</h2>
+<button onclick="show('wc')">Working Capital</button>
+<button onclick="show('tl')">Term Loan</button>
+<button onclick="show('agri')">Agriculture</button>
+<button onclick="show('dashboard')">Dashboard</button>
+</div>
 
-<div class="container">
+<div class="main">
 
-<div class="card">
-<h3>Financial Inputs</h3>
-<input id="turnover" placeholder="Annual Turnover">
-<input id="net_profit" placeholder="Net Profit">
-<input id="depreciation" placeholder="Depreciation">
-<input id="tax_paid" placeholder="Tax Paid">
+<div id="wc" class="card">
+<h3>Working Capital</h3>
+<input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
-<input id="annual_installment" placeholder="Annual Installment (TL)">
-<input id="undoc" placeholder="Undocumented Income">
-<input id="existing_emi" placeholder="Existing EMI">
-<input id="requested" placeholder="Requested Loan">
-
-<button onclick="runAnalysis()">Run Analysis</button>
-
-<div class="result" id="output"></div>
 </div>
 
+<div id="tl" class="card" style="display:none">
+<h3>Term Loan</h3>
+<input id="net_profit" placeholder="Net Profit">
+<input id="depreciation" placeholder="Depreciation">
+<input id="monthly_emi" placeholder="Monthly EMI">
+</div>
+
+<div id="agri" class="card" style="display:none">
+<h3>Agriculture</h3>
+<input id="tax_paid" placeholder="Tax Paid">
+<input id="undoc" placeholder="Undocumented Income">
+<input id="requested" placeholder="Requested Loan">
+<button class="run" onclick="runAnalysis()">Run Full Analysis</button>
+</div>
+
+<div id="dashboard" style="display:none">
+<div class="kpi">
+<div id="k_wc">WC</div>
+<div id="k_agri">Agri</div>
+<div id="k_dscr">DSCR</div>
+<div id="k_final">Final</div>
+</div>
 <div class="card">
 <canvas id="chart"></canvas>
+</div>
 </div>
 
 </div>
 
 <script>
+const API_URL = "https://credit-backend-production-6a6d.up.railway.app/analyze";
 
-const API_URL ="https://credit-backend-production-6a6d.up.railway.app/";
+function show(section){
+["wc","tl","agri","dashboard"].forEach(id=>{
+document.getElementById(id).style.display="none";
+});
+document.getElementById(section).style.display="block";
+}
 
 let chart;
 
@@ -101,36 +156,29 @@ async function runAnalysis(){
 
 const payload = {
 turnover: parseFloat(turnover.value)||0,
-net_profit: parseFloat(net_profit.value)||0,
-depreciation: parseFloat(depreciation.value)||0,
-tax_paid: parseFloat(tax_paid.value)||0,
 inventory: parseFloat(inventory.value)||0,
 debtors: parseFloat(debtors.value)||0,
 creditors: parseFloat(creditors.value)||0,
-annual_installment: parseFloat(annual_installment.value)||0,
+net_profit: parseFloat(net_profit.value)||0,
+depreciation: parseFloat(depreciation.value)||0,
+monthly_emi: parseFloat(monthly_emi.value)||0,
+tax_paid: parseFloat(tax_paid.value)||0,
 undocumented_income: parseFloat(undoc.value)||0,
-existing_emi: parseFloat(existing_emi.value)||0,
 requested_loan: parseFloat(requested.value)||0
 };
 
 const res = await fetch(API_URL,{
 method:"POST",
-headers:{ "Content-Type":"application/json" },
+headers:{"Content-Type":"application/json"},
 body:JSON.stringify(payload)
 });
 
 const data = await res.json();
 
-output.innerHTML = `
-Working Capital: ₹ ${data.working_capital}<br>
-MPBF: ₹ ${data.mpbf}<br>
-Turnover Method: ₹ ${data.turnover_method}<br>
-Current Ratio: ${data.current_ratio}<br>
-DSCR: ${data.dscr}<br>
-Agriculture Eligible: ₹ ${data.agriculture_eligible}<br>
-Monthly Surplus: ₹ ${data.monthly_surplus}<br>
-Final Recommended: ₹ ${data.final_recommendation}
-`;
+k_wc.innerHTML = "WC ₹"+data.wc_eligible;
+k_agri.innerHTML = "Agri ₹"+data.agri_eligible;
+k_dscr.innerHTML = "DSCR "+data.dscr;
+k_final.innerHTML = "Final ₹"+data.final_recommendation;
 
 if(chart) chart.destroy();
 
@@ -141,17 +189,17 @@ labels:["WC","Agri","Final"],
 datasets:[{
 label:"Eligibility",
 data:[
-data.working_capital,
-data.agriculture_eligible,
+data.wc_eligible,
+data.agri_eligible,
 data.final_recommendation
 ],
-backgroundColor:["#3498db","#2ecc71","#e74c3c"]
+backgroundColor:["#0ea5e9","#22c55e","#ef4444"]
 }]
 }
 });
 
+show("dashboard");
 }
-
 </script>
 
 </body>
