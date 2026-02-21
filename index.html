@@ -2,61 +2,58 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Agri / WC Calculator</title>
+<title>Agri / WC Calculator - V1</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <style>
 :root{
-  --bg:#0f172a;
-  --card:rgba(255,255,255,0.08);
-  --text:#f1f5f9;
-  --accent:#2563eb;
+ --bg:#0f172a;
+ --card:rgba(255,255,255,0.08);
+ --text:#f1f5f9;
+ --accent:#2563eb;
 }
 .light{
-  --bg:#f8fafc;
-  --card:#ffffff;
-  --text:#0f172a;
-  --accent:#1e40af;
+ --bg:#f8fafc;
+ --card:#ffffff;
+ --text:#0f172a;
+ --accent:#1e40af;
 }
 body{
-  margin:0;
-  font-family:Arial;
-  background:var(--bg);
-  color:var(--text);
+ margin:0;
+ font-family:Arial;
+ background:var(--bg);
+ color:var(--text);
 }
 header{
-  padding:20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-button{
-  padding:10px 15px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-  background:var(--accent);
-  color:#fff;
+ display:flex;
+ justify-content:space-between;
+ padding:20px;
 }
 .card{
-  background:var(--card);
-  padding:20px;
-  margin:20px;
-  border-radius:10px;
+ background:var(--card);
+ padding:20px;
+ margin:20px;
+ border-radius:10px;
 }
 .grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-  gap:15px;
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+ gap:10px;
 }
 input{
-  width:100%;
-  padding:8px;
-  margin-bottom:10px;
+ padding:8px;
+}
+button{
+ padding:10px;
+ border:none;
+ border-radius:6px;
+ background:var(--accent);
+ color:white;
+ cursor:pointer;
 }
 canvas{
-  max-width:100%;
+ max-width:100%;
 }
 </style>
 </head>
@@ -64,55 +61,46 @@ canvas{
 <body>
 
 <header>
-<h2>Agri / WC Calculator</h2>
+<h2>Agri / WC Calculator - V1</h2>
 <button onclick="toggleMode()">Toggle Mode</button>
 </header>
 
 <div class="card">
-<h3>Working Capital</h3>
+<h3>Input Section</h3>
 <div class="grid">
 <input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
-</div>
-</div>
 
-<div class="card">
-<h3>Term Loan</h3>
-<div class="grid">
-<input id="tl_profit" placeholder="Net Profit">
-<input id="tl_dep" placeholder="Depreciation">
-<input id="tl_emi" placeholder="Monthly EMI">
+<input id="tl_profit" placeholder="TL Profit">
+<input id="tl_dep" placeholder="TL Depreciation">
+<input id="tl_emi" placeholder="TL EMI">
 <input id="tl_tenure" placeholder="Tenure (3-7)">
-</div>
-</div>
 
-<div class="card">
-<h3>Agriculture</h3>
-<div class="grid">
-<input id="ag_profit" placeholder="Net Profit">
-<input id="ag_dep" placeholder="Depreciation">
-<input id="ag_tax" placeholder="Tax">
-<input id="ag_emi" placeholder="Monthly EMI">
+<input id="ag_profit" placeholder="Agri Profit">
+<input id="ag_dep" placeholder="Agri Depreciation">
+<input id="ag_tax" placeholder="Agri Tax">
+<input id="ag_emi" placeholder="Agri EMI">
 <input id="loan_required" placeholder="Loan Required">
-<input id="undoc" placeholder="Undocumented Income">
+<input id="undoc" placeholder="Undoc Income">
 </div>
-</div>
-
-<div style="text-align:center">
+<br>
 <button onclick="runAnalysis()">Run Analysis</button>
 </div>
 
 <div class="card">
-<h3>Dashboard</h3>
+<h3>Results</h3>
 <p id="summary"></p>
 <canvas id="chart"></canvas>
+<br>
+<button onclick="downloadPDF()">Download CAM PDF</button>
 </div>
 
 <script>
 
 let chart;
+let lastData;
 
 function toggleMode(){
  document.body.classList.toggle("light");
@@ -136,33 +124,35 @@ async function runAnalysis(){
   undoc:undoc.value
  };
 
- const res=await fetch("https://credit-backend-production-6a6d.up.railway.app/analyze";{
+ const res=await fetch("https://credit-backend-production-6a6d.up.railway.app/analyze",{
   method:"POST",
   headers:{"Content-Type":"application/json"},
   body:JSON.stringify(payload)
  });
 
  const data=await res.json();
+ lastData=data;
 
- summary.innerHTML=`
- WC: ₹${data.wc_limit}<br>
- TL: ₹${data.tl_limit}<br>
- Agri: ₹${data.agri_limit}<br>
- Total: ₹${data.total_exposure}<br>
- Rating: ${data.rating}
- `;
+ summary.innerText=data.narrative;
 
  if(chart) chart.destroy();
-
  chart=new Chart(document.getElementById("chart"),{
   type:"bar",
   data:{
-   labels:["WC","TL","Agri"],
+   labels:["WC","TL","Agri","Total"],
    datasets:[{
-    data:[data.wc_limit,data.tl_limit,data.agri_limit]
+    data:[data.wc_limit,data.tl_limit,data.agri_limit,data.total_exposure]
    }]
   }
  });
+}
+
+function downloadPDF(){
+ const { jsPDF } = window.jspdf;
+ const doc=new jsPDF();
+ doc.text("Agri / WC Calculator CAM",20,20);
+ doc.text(lastData.narrative,20,40);
+ doc.save("CAM_Report.pdf");
 }
 
 </script>
