@@ -4,97 +4,18 @@
 <title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <style>
-body{
-margin:0;
-font-family:Segoe UI;
-background:#0f172a;
-color:white;
-display:flex;
-}
-
-.sidebar{
-width:260px;
-background:#111827;
-height:100vh;
-padding:20px;
-position:fixed;
-}
-
-.sidebar h2{
-color:#22c55e;
-margin-bottom:20px;
-}
-
-.sidebar button{
-width:100%;
-padding:10px;
-margin-bottom:10px;
-background:#1f2937;
-border:none;
-color:white;
-border-radius:6px;
-cursor:pointer;
-font-weight:bold;
-}
-
-.sidebar button:hover{
-background:#22c55e;
-}
-
-.main{
-margin-left:280px;
-padding:20px;
-width:100%;
-}
-
-.card{
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-margin-bottom:20px;
-}
-
-input{
-width:100%;
-padding:8px;
-margin-bottom:10px;
-border:none;
-border-radius:6px;
-}
-
-button.run{
-background:#22c55e;
-border:none;
-padding:10px;
-width:100%;
-font-weight:bold;
-cursor:pointer;
-border-radius:6px;
-margin-top:10px;
-}
-
-.kpi{
-display:flex;
-gap:15px;
-flex-wrap:wrap;
-margin-bottom:20px;
-}
-
-.kpi div{
-flex:1;
-min-width:150px;
-padding:15px;
-border-radius:8px;
-text-align:center;
-font-weight:bold;
-}
-
-.green{background:#16a34a;}
-.orange{background:#f59e0b;}
-.red{background:#dc2626;}
+body{margin:0;font-family:Segoe UI;background:#0f172a;color:white;display:flex;}
+.sidebar{width:260px;background:#111827;height:100vh;padding:20px;position:fixed;}
+.sidebar h2{color:#22c55e;}
+.sidebar button{width:100%;padding:10px;margin:8px 0;background:#1f2937;border:none;color:white;border-radius:6px;cursor:pointer;font-weight:bold;}
+.sidebar button:hover{background:#22c55e;}
+.main{margin-left:280px;padding:20px;width:100%;}
+.card{background:#1e293b;padding:20px;border-radius:10px;margin-bottom:20px;}
+input{width:100%;padding:8px;margin-bottom:10px;border:none;border-radius:6px;}
+button.run{background:#22c55e;border:none;padding:10px;width:100%;font-weight:bold;cursor:pointer;border-radius:6px;}
+.kpi{display:flex;gap:15px;flex-wrap:wrap;}
+.kpi div{flex:1;min-width:150px;padding:15px;border-radius:8px;text-align:center;font-weight:bold;background:#16a34a;}
 </style>
 </head>
 
@@ -102,173 +23,112 @@ font-weight:bold;
 
 <div class="sidebar">
 <h2>Agri / WC Calculator</h2>
-<button onclick="show('wc')">Working Capital</button>
-<button onclick="show('tl')">Term Loan</button>
-<button onclick="show('agri')">Agriculture</button>
+<button onclick="show('wc')">WC</button>
+<button onclick="show('tl')">TL</button>
+<button onclick="show('agri')">Agri</button>
 <button onclick="show('bank')">Banking</button>
 <button onclick="show('dashboard')">Dashboard</button>
-<button class="run" onclick="runFull()">Run Full Analysis</button>
+<button class="run" onclick="runFull()">Run Full</button>
 </div>
 
 <div class="main">
 
-<!-- WC -->
 <div id="wc" class="card">
 <h3>Working Capital</h3>
 <input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
-<button class="run" onclick="runWC()">Run WC Analysis</button>
+<button class="run" onclick="runFull()">Run WC</button>
 </div>
 
-<!-- TL -->
 <div id="tl" class="card" style="display:none">
 <h3>Term Loan</h3>
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
-<button class="run" onclick="runTL()">Run TL Analysis</button>
+<button class="run" onclick="runFull()">Run TL</button>
 </div>
 
-<!-- AGRI -->
 <div id="agri" class="card" style="display:none">
 <h3>Agriculture</h3>
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="undoc" placeholder="Undocumented Income">
-<button class="run" onclick="runAgri()">Run Agriculture Analysis</button>
+<button class="run" onclick="runFull()">Run Agri</button>
 </div>
 
-<!-- BANK -->
 <div id="bank" class="card" style="display:none">
-<h3>Banking Upload</h3>
+<h3>Banking</h3>
 <input type="file" id="bankFile">
-<button class="run" onclick="uploadBank()">Run Banking Analysis</button>
+<button class="run" onclick="uploadBank()">Run Banking</button>
 <div id="bankResult"></div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" style="display:none">
-
 <div class="kpi">
-<div id="wc_kpi" class="green">WC ₹0</div>
-<div id="agri_kpi" class="orange">Agri ₹0</div>
-<div id="dscr_kpi" class="green">DSCR 0</div>
+<div id="wc_kpi">WC ₹0</div>
+<div id="tl_kpi">TL ₹0</div>
+<div id="agri_kpi">Agri ₹0</div>
 </div>
-
-<div class="card">
 <canvas id="chart"></canvas>
-</div>
-
-<button class="run" onclick="downloadCAM()">Download CAM</button>
-
 </div>
 
 </div>
 
 <script>
-const API_URL="https://credit-backend-production-6a6d.up.railway.app/analyze";
-const BANK_URL="https://credit-backend-production-6a6d.up.railway.app/banking";
+const API="https://credit-backend-production-6a6d.up.railway.app/analyze";
+const BANK="https://credit-backend-production-6a6d.up.railway.app/banking";
 
 let chart;
 let globalData={};
 
-function show(section){
+function show(s){
 ["wc","tl","agri","bank","dashboard"].forEach(id=>{
 document.getElementById(id).style.display="none";
 });
-document.getElementById(section).style.display="block";
+document.getElementById(s).style.display="block";
 }
 
-// ---------- WC ----------
-async function runWC(){
-await runFull();
-}
-
-// ---------- TL ----------
-async function runTL(){
-await runFull();
-}
-
-// ---------- AGRI ----------
-async function runAgri(){
-await runFull();
-}
-
-// ---------- FULL ----------
 async function runFull(){
-
 const payload={
-turnover:parseFloat(turnover.value)||0,
-inventory:parseFloat(inventory.value)||0,
-debtors:parseFloat(debtors.value)||0,
-creditors:parseFloat(creditors.value)||0,
-net_profit:parseFloat(net_profit.value)||0,
-depreciation:parseFloat(depreciation.value)||0,
-monthly_emi:parseFloat(monthly_emi.value)||0,
-tax_paid:parseFloat(tax_paid.value)||0,
-undocumented_income:parseFloat(undoc.value)||0
+turnover:+turnover.value||0,
+inventory:+inventory.value||0,
+debtors:+debtors.value||0,
+creditors:+creditors.value||0,
+net_profit:+net_profit.value||0,
+depreciation:+depreciation.value||0,
+monthly_emi:+monthly_emi.value||0,
+tax_paid:+tax_paid.value||0,
+undocumented_income:+undoc.value||0
 };
 
-const res=await fetch(API_URL,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(payload)
-});
-
+const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 const data=await res.json();
 globalData=data;
 
-wc_kpi.innerHTML="WC ₹"+(data.wc||0);
-agri_kpi.innerHTML="Agri ₹"+(data.agri||0);
-dscr_kpi.innerHTML="DSCR "+(data.dscr||0);
+wc_kpi.innerHTML="WC ₹"+data.wc;
+tl_kpi.innerHTML="TL ₹"+data.tl_eligible;
+agri_kpi.innerHTML="Agri ₹"+data.agri_eligible;
 
 if(chart) chart.destroy();
 chart=new Chart(document.getElementById("chart"),{
 type:"bar",
 data:{
-labels:["WC","Agri"],
-datasets:[{
-data:[data.wc||0,data.agri||0],
-backgroundColor:["#22c55e","#f59e0b"]
-}]
+labels:["WC","TL","Agri"],
+datasets:[{data:[data.wc,data.tl_eligible,data.agri_eligible],backgroundColor:["#22c55e","#3b82f6","#f59e0b"]}]
 }
 });
 
 show("dashboard");
 }
 
-// ---------- BANK ----------
 async function uploadBank(){
-const file=document.getElementById("bankFile").files[0];
-let formData=new FormData();
-formData.append("file",file);
-
-const res=await fetch(BANK_URL,{
-method:"POST",
-body:formData
-});
-
+const file=bankFile.files[0];
+let form=new FormData();
+form.append("file",file);
+const res=await fetch(BANK,{method:"POST",body:form});
 const data=await res.json();
-globalData={...globalData,...data};
-
-bankResult.innerHTML=
-"Total Credit: ₹"+data.total_credit+
-"<br>Bounce Count: "+data.bounce_count+
-"<br>Hygiene Score: "+data.hygiene_score;
-}
-
-// ---------- CAM ----------
-function downloadCAM(){
-const { jsPDF } = window.jspdf;
-let doc = new jsPDF();
-
-doc.text("CREDIT APPRAISAL MEMORANDUM",20,20);
-doc.text("Working Capital: ₹"+(globalData.wc||0),20,40);
-doc.text("Agriculture: ₹"+(globalData.agri||0),20,50);
-doc.text("DSCR: "+(globalData.dscr||0),20,60);
-
-doc.save("CAM_Report.pdf");
+bankResult.innerHTML="Credit ₹"+data.total_credit+" | Bounce "+data.bounce_count+" | Hygiene "+data.hygiene_score;
 }
 </script>
 
