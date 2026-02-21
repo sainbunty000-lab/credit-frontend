@@ -3,7 +3,6 @@
 <head>
 <title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -16,14 +15,12 @@ color:white;
 display:flex;
 }
 
-/* Sidebar */
 .sidebar{
 width:260px;
 background:#111827;
 height:100vh;
 padding:20px;
 position:fixed;
-overflow:auto;
 }
 
 .sidebar h2{
@@ -47,7 +44,6 @@ font-weight:bold;
 background:#22c55e;
 }
 
-/* Main */
 .main{
 margin-left:280px;
 padding:20px;
@@ -89,7 +85,7 @@ margin-bottom:20px;
 
 .kpi div{
 flex:1;
-min-width:160px;
+min-width:150px;
 padding:15px;
 border-radius:8px;
 text-align:center;
@@ -99,13 +95,6 @@ font-weight:bold;
 .green{background:#16a34a;}
 .orange{background:#f59e0b;}
 .red{background:#dc2626;}
-
-.heatmap{
-height:20px;
-border-radius:10px;
-background:linear-gradient(to right, red, orange, green);
-margin-top:10px;
-}
 </style>
 </head>
 
@@ -118,41 +107,43 @@ margin-top:10px;
 <button onclick="show('agri')">Agriculture</button>
 <button onclick="show('bank')">Banking</button>
 <button onclick="show('dashboard')">Dashboard</button>
-<button class="run" onclick="runAnalysis()">Run Full Analysis</button>
-<button onclick="downloadCAM()">Download CAM</button>
+<button class="run" onclick="runFull()">Run Full Analysis</button>
 </div>
 
 <div class="main">
 
 <!-- WC -->
 <div id="wc" class="card">
-<h3>Working Capital (RBI)</h3>
+<h3>Working Capital</h3>
 <input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
+<button class="run" onclick="runWC()">Run WC Analysis</button>
 </div>
 
 <!-- TL -->
 <div id="tl" class="card" style="display:none">
-<h3>Term Loan (DSCR)</h3>
+<h3>Term Loan</h3>
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
+<button class="run" onclick="runTL()">Run TL Analysis</button>
 </div>
 
 <!-- AGRI -->
 <div id="agri" class="card" style="display:none">
-<h3>Agriculture Model</h3>
+<h3>Agriculture</h3>
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="undoc" placeholder="Undocumented Income">
+<button class="run" onclick="runAgri()">Run Agriculture Analysis</button>
 </div>
 
-<!-- BANKING -->
+<!-- BANK -->
 <div id="bank" class="card" style="display:none">
-<h3>Banking Statement Upload</h3>
+<h3>Banking Upload</h3>
 <input type="file" id="bankFile">
-<button class="run" onclick="uploadBank()">Analyze Banking</button>
+<button class="run" onclick="uploadBank()">Run Banking Analysis</button>
 <div id="bankResult"></div>
 </div>
 
@@ -163,20 +154,13 @@ margin-top:10px;
 <div id="wc_kpi" class="green">WC ₹0</div>
 <div id="agri_kpi" class="orange">Agri ₹0</div>
 <div id="dscr_kpi" class="green">DSCR 0</div>
-<div id="risk_kpi" class="red">Risk 0</div>
-</div>
-
-<div class="heatmap"></div>
-
-<div class="card">
-<label>Stress Simulation (%)</label>
-<input type="range" min="0" max="50" value="0" id="stressSlider" oninput="applyStress(this.value)">
-<p id="stressValue">0%</p>
 </div>
 
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
+
+<button class="run" onclick="downloadCAM()">Download CAM</button>
 
 </div>
 
@@ -196,7 +180,23 @@ document.getElementById(id).style.display="none";
 document.getElementById(section).style.display="block";
 }
 
-async function runAnalysis(){
+// ---------- WC ----------
+async function runWC(){
+await runFull();
+}
+
+// ---------- TL ----------
+async function runTL(){
+await runFull();
+}
+
+// ---------- AGRI ----------
+async function runAgri(){
+await runFull();
+}
+
+// ---------- FULL ----------
+async function runFull(){
 
 const payload={
 turnover:parseFloat(turnover.value)||0,
@@ -219,18 +219,9 @@ body:JSON.stringify(payload)
 const data=await res.json();
 globalData=data;
 
-updateDashboard(data);
-show("dashboard");
-}
-
-function updateDashboard(data){
-
 wc_kpi.innerHTML="WC ₹"+(data.wc||0);
 agri_kpi.innerHTML="Agri ₹"+(data.agri||0);
 dscr_kpi.innerHTML="DSCR "+(data.dscr||0);
-
-let riskScore=(data.dscr>1.25?85:data.dscr>1?65:40);
-risk_kpi.innerHTML="Risk "+riskScore;
 
 if(chart) chart.destroy();
 chart=new Chart(document.getElementById("chart"),{
@@ -243,19 +234,11 @@ backgroundColor:["#22c55e","#f59e0b"]
 }]
 }
 });
+
+show("dashboard");
 }
 
-function applyStress(value){
-stressValue.innerHTML=value+"%";
-let factor=1-(value/100);
-let stressedWC=(globalData.wc||0)*factor;
-let stressedAgri=(globalData.agri||0)*factor;
-if(chart){
-chart.data.datasets[0].data=[stressedWC,stressedAgri];
-chart.update();
-}
-}
-
+// ---------- BANK ----------
 async function uploadBank(){
 const file=document.getElementById("bankFile").files[0];
 let formData=new FormData();
@@ -269,45 +252,23 @@ body:formData
 const data=await res.json();
 globalData={...globalData,...data};
 
-bankResult.innerHTML=`
-Total Credit: ₹${data.total_credit}<br>
-Average Monthly Credit: ₹${data.avg_monthly_credit}<br>
-Bounce Count: ${data.bounce_count}<br>
-Hygiene Score: ${data.hygiene_score}/100
-`;
+bankResult.innerHTML=
+"Total Credit: ₹"+data.total_credit+
+"<br>Bounce Count: "+data.bounce_count+
+"<br>Hygiene Score: "+data.hygiene_score;
 }
 
+// ---------- CAM ----------
 function downloadCAM(){
-
 const { jsPDF } = window.jspdf;
 let doc = new jsPDF();
 
-let wc=globalData.wc||0;
-let agri=globalData.agri||0;
-let dscr=globalData.dscr||0;
-let credit=globalData.total_credit||0;
-let bounce=globalData.bounce_count||0;
-let hygiene=globalData.hygiene_score||0;
+doc.text("CREDIT APPRAISAL MEMORANDUM",20,20);
+doc.text("Working Capital: ₹"+(globalData.wc||0),20,40);
+doc.text("Agriculture: ₹"+(globalData.agri||0),20,50);
+doc.text("DSCR: "+(globalData.dscr||0),20,60);
 
-let riskScore=(dscr>1.25?85:dscr>1?65:40);
-
-doc.setFontSize(14);
-doc.text("AGRI / WC CALCULATOR - CREDIT APPRAISAL MEMORANDUM",20,20);
-doc.text("Working Capital: ₹"+wc,20,40);
-doc.text("Agriculture: ₹"+agri,20,50);
-doc.text("DSCR: "+dscr,20,60);
-doc.text("Total Credit: ₹"+credit,20,70);
-doc.text("Bounce Count: "+bounce,20,80);
-doc.text("Hygiene Score: "+hygiene+"/100",20,90);
-doc.text("Risk Score: "+riskScore+"/100",20,100);
-
-doc.addPage();
-doc.text("Eligibility Graph",20,20);
-let canvas=document.getElementById("chart");
-let img=canvas.toDataURL("image/png");
-doc.addImage(img,"PNG",15,30,180,100);
-
-doc.save("Premium_CAM_Report.pdf");
+doc.save("CAM_Report.pdf");
 }
 </script>
 
