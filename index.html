@@ -3,142 +3,25 @@
 <head>
 <title>Agri / WC Calculator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-*{box-sizing:border-box}
-body{
-margin:0;
-font-family:'Segoe UI',sans-serif;
-background:linear-gradient(135deg,#0f172a,#1e293b);
-color:white;
-display:flex;
-}
-
-/* Sidebar */
-.sidebar{
-width:260px;
-background:rgba(17,24,39,0.95);
-backdrop-filter:blur(10px);
-height:100vh;
-padding:20px;
-position:fixed;
-border-right:1px solid rgba(255,255,255,0.1);
-}
-
-.sidebar h2{
-color:#22c55e;
-margin-bottom:25px;
-font-weight:600;
-}
-
-.sidebar button{
-width:100%;
-padding:12px;
-margin-bottom:12px;
-background:#1f2937;
-border:none;
-color:white;
-border-radius:8px;
-font-weight:600;
-cursor:pointer;
-transition:0.3s;
-}
-
-.sidebar button:hover{
-background:#22c55e;
-transform:translateY(-2px);
-}
-
-/* Main */
-.main{
-margin-left:280px;
-padding:30px;
-width:100%;
-}
-
-.card{
-background:rgba(30,41,59,0.8);
-padding:25px;
-border-radius:15px;
-margin-bottom:25px;
-box-shadow:0 8px 20px rgba(0,0,0,0.4);
-backdrop-filter:blur(12px);
-transition:0.3s;
-}
-
-.card:hover{
-transform:translateY(-5px);
-}
-
-input{
-width:100%;
-padding:10px;
-margin-bottom:12px;
-border:none;
-border-radius:8px;
-background:#111827;
-color:white;
-}
-
-button.run{
-background:#22c55e;
-border:none;
-padding:12px;
-width:100%;
-font-weight:700;
-border-radius:8px;
-cursor:pointer;
-margin-top:10px;
-}
-
-button.run:hover{
-background:#16a34a;
-}
-
-.kpi{
-display:flex;
-gap:20px;
-flex-wrap:wrap;
-margin-bottom:25px;
-}
-
-.kpi div{
-flex:1;
-min-width:180px;
-padding:20px;
-border-radius:12px;
-text-align:center;
-font-weight:700;
-font-size:16px;
-transition:0.3s;
-}
-
-.green{background:#16a34a;}
-.orange{background:#f59e0b;}
-.blue{background:#3b82f6;}
-.red{background:#dc2626;}
-
-.heatbar{
-height:18px;
-border-radius:10px;
-margin-top:15px;
-background:linear-gradient(to right,red,orange,green);
-}
-
-.slider-label{
-margin-top:10px;
-font-weight:600;
-}
-
-.summary-box{
-background:#0f172a;
-padding:15px;
-border-radius:10px;
-margin-top:15px;
-}
+body{margin:0;font-family:Segoe UI;background:#0f172a;color:white;display:flex}
+.sidebar{width:260px;background:#111827;height:100vh;padding:20px;position:fixed}
+.sidebar h2{color:#22c55e}
+.sidebar button{width:100%;padding:10px;margin:8px 0;background:#1f2937;border:none;color:white;border-radius:8px;font-weight:600;cursor:pointer}
+.sidebar button:hover{background:#22c55e}
+.main{margin-left:280px;padding:25px;width:100%}
+.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px}
+input{width:100%;padding:8px;margin-bottom:10px;border:none;border-radius:6px}
+.run{background:#22c55e;border:none;padding:10px;width:100%;font-weight:700;border-radius:8px;cursor:pointer}
+.kpi{display:flex;gap:15px;flex-wrap:wrap}
+.kpi div{flex:1;padding:15px;border-radius:8px;text-align:center;font-weight:bold}
+.green{background:#16a34a}
+.orange{background:#f59e0b}
+.blue{background:#3b82f6}
+.red{background:#dc2626}
 </style>
 </head>
 
@@ -146,53 +29,48 @@ margin-top:15px;
 
 <div class="sidebar">
 <h2>Agri / WC Calculator</h2>
-<button onclick="show('wc')">Working Capital</button>
-<button onclick="show('tl')">Term Loan</button>
-<button onclick="show('agri')">Agriculture</button>
-<button onclick="show('bank')">Banking PERFIOS</button>
+<button onclick="show('wc')">WC</button>
+<button onclick="show('tl')">TL</button>
+<button onclick="show('agri')">Agri</button>
+<button onclick="show('bank')">Banking</button>
 <button onclick="show('dashboard')">Dashboard</button>
-<button class="run" onclick="runFull()">Run Full Analysis</button>
-<button onclick="downloadCAM()">Download Premium CAM</button>
+<button class="run" onclick="runFull()">Run Full</button>
+<button onclick="downloadCAM()">Download CAM</button>
 </div>
 
 <div class="main">
 
-<!-- WC -->
 <div id="wc" class="card">
-<h3>Working Capital (RBI Model)</h3>
-<input id="turnover" placeholder="Annual Turnover">
+<h3>Working Capital</h3>
+<input id="turnover" placeholder="Turnover">
 <input id="inventory" placeholder="Inventory">
 <input id="debtors" placeholder="Debtors">
 <input id="creditors" placeholder="Creditors">
 <button class="run" onclick="runFull()">Run WC</button>
 </div>
 
-<!-- TL -->
 <div id="tl" class="card" style="display:none">
-<h3>Term Loan (DSCR)</h3>
+<h3>Term Loan</h3>
 <input id="net_profit" placeholder="Net Profit">
 <input id="depreciation" placeholder="Depreciation">
 <input id="monthly_emi" placeholder="Monthly EMI">
 <button class="run" onclick="runFull()">Run TL</button>
 </div>
 
-<!-- AGRI -->
 <div id="agri" class="card" style="display:none">
-<h3>Agriculture Model</h3>
+<h3>Agriculture</h3>
 <input id="tax_paid" placeholder="Tax Paid">
 <input id="undoc" placeholder="Undocumented Income">
 <button class="run" onclick="runFull()">Run Agri</button>
 </div>
 
-<!-- BANK -->
 <div id="bank" class="card" style="display:none">
-<h3>Banking Statement Upload</h3>
+<h3>Banking PERFIOS</h3>
 <input type="file" id="bankFile">
-<button class="run" onclick="uploadBank()">Run Banking Analysis</button>
-<div id="bankResult" class="summary-box"></div>
+<button class="run" onclick="uploadBank()">Run Banking</button>
+<div id="bankResult"></div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" style="display:none">
 
 <div class="kpi">
@@ -202,22 +80,9 @@ margin-top:15px;
 <div id="risk_kpi" class="red">Risk 0</div>
 </div>
 
-<div class="heatbar"></div>
-
-<div class="card">
-<label class="slider-label">Stress Simulation (%)</label>
-<input type="range" min="0" max="50" value="0" id="stressSlider" oninput="applyStress(this.value)">
-<p id="stressValue">0%</p>
-</div>
-
-<div class="card">
 <canvas id="chart"></canvas>
-</div>
 
-<div class="card">
-<h3>LOS Approval Summary</h3>
 <div id="losSummary"></div>
-</div>
 
 </div>
 
@@ -231,11 +96,11 @@ let chart;
 let globalData={};
 let bankingData={};
 
-function show(section){
+function show(s){
 ["wc","tl","agri","bank","dashboard"].forEach(id=>{
 document.getElementById(id).style.display="none";
 });
-document.getElementById(section).style.display="block";
+document.getElementById(s).style.display="block";
 }
 
 async function runFull(){
@@ -252,20 +117,9 @@ tax_paid:+tax_paid.value||0,
 undocumented_income:+undoc.value||0
 };
 
-const res=await fetch(API,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(payload)
-});
-
+const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 const data=await res.json();
 globalData=data;
-
-updateDashboard(data);
-show("dashboard");
-}
-
-function updateDashboard(data){
 
 wc_kpi.innerHTML="WC ₹"+data.wc;
 tl_kpi.innerHTML="TL ₹"+data.tl_eligible;
@@ -277,9 +131,8 @@ risk_kpi.innerHTML="Risk "+riskScore;
 losSummary.innerHTML=
 "DSCR: "+data.dscr+
 "<br>Cash Accrual: ₹"+data.cash_accrual+
-"<br>Banking Hygiene: "+(bankingData.hygiene_score||'N/A')+
-"<br>Recommended Limit: ₹"+Math.max(data.wc,data.tl_eligible,data.agri_eligible)+
-"<br><b>Decision: "+(riskScore>60?"APPROVE":"REVIEW")+"</b>";
+"<br>Recommended: ₹"+Math.max(data.wc,data.tl_eligible,data.agri_eligible)+
+"<br>Decision: "+(riskScore>60?"APPROVE":"REVIEW");
 
 if(chart) chart.destroy();
 
@@ -293,19 +146,8 @@ backgroundColor:["#22c55e","#3b82f6","#f59e0b"]
 }]
 }
 });
-}
 
-function applyStress(value){
-stressValue.innerHTML=value+"%";
-let factor=1-(value/100);
-if(chart){
-chart.data.datasets[0].data=[
-(globalData.wc||0)*factor,
-(globalData.tl_eligible||0)*factor,
-(globalData.agri_eligible||0)*factor
-];
-chart.update();
-}
+show("dashboard");
 }
 
 async function uploadBank(){
@@ -319,9 +161,9 @@ bankingData=data;
 
 bankResult.innerHTML=
 "Total Credit: ₹"+data.total_credit+
-"<br>Avg Monthly Credit: ₹"+data.avg_monthly_credit+
-"<br>Bounce Count: "+data.bounce_count+
-"<br>Hygiene Score: "+data.hygiene_score;
+"<br>Total Debit: ₹"+data.total_debit+
+"<br>Bounce: "+data.bounce_count+
+"<br>Hygiene: "+data.hygiene_score;
 }
 
 function downloadCAM(){
@@ -329,26 +171,23 @@ function downloadCAM(){
 const { jsPDF } = window.jspdf;
 let doc = new jsPDF();
 
-doc.setFontSize(14);
-doc.text("AGRI / WC CALCULATOR - CREDIT APPRAISAL MEMORANDUM",20,20);
-
-doc.setFontSize(11);
+doc.text("CREDIT APPRAISAL MEMORANDUM",20,20);
 doc.text("WC: ₹"+(globalData.wc||0),20,40);
 doc.text("TL: ₹"+(globalData.tl_eligible||0),20,50);
 doc.text("Agri: ₹"+(globalData.agri_eligible||0),20,60);
 doc.text("DSCR: "+(globalData.dscr||0),20,70);
 
 doc.addPage();
-doc.text("BANKING PERFIOS",20,20);
-doc.text("Total Credit: ₹"+(bankingData.total_credit||0),20,40);
-doc.text("Bounce: "+(bankingData.bounce_count||0),20,50);
-doc.text("Hygiene: "+(bankingData.hygiene_score||0),20,60);
-
-doc.addPage();
 let img=document.getElementById("chart").toDataURL("image/png");
 doc.addImage(img,"PNG",15,30,180,100);
 
-doc.save("Premium_CAM_Report.pdf");
+doc.addPage();
+doc.text("Banking PERFIOS",20,20);
+doc.text("Credit: ₹"+(bankingData.total_credit||0),20,40);
+doc.text("Debit: ₹"+(bankingData.total_debit||0),20,50);
+doc.text("Bounce: "+(bankingData.bounce_count||0),20,60);
+
+doc.save("Final_CAM_Report.pdf");
 }
 </script>
 
