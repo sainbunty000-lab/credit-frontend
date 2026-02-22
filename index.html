@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CREDIT.AI | Decision Cockpit</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0F172A; color: #F8FAFC; overflow: hidden; }
         .glass { background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
@@ -26,67 +24,46 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-
         const BACKEND_URL = "https://credit-backend-production-d988.up.railway.app";
 
-        // --- UI COMPONENTS ---
-        const KPITile = ({ title, value, status = "default" }) => {
-            const colors = {
-                default: "border-slate-700",
-                safe: "border-emerald-500 bg-emerald-500/5",
-                risk: "border-rose-500 bg-rose-500/5"
-            };
-            return (
-                <div className={`glass p-5 rounded-2xl border-l-4 ${colors[status]} slide-up transition-all`}>
-                    <p className="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2">{title}</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold tracking-tighter">₹{value || '0.00'}</span>
-                        <span className="text-xs text-slate-500 font-medium">Lakhs</span>
-                    </div>
-                </div>
-            );
-        };
-
-        const SidebarItem = ({ id, label, icon, active, set }) => (
-            <button onClick={() => set(id)} className={`w-full flex items-center gap-3 p-3.5 rounded-xl transition-all ${active === id ? 'active-tab' : 'text-slate-400 hover:bg-white/5'}`}>
-                <i data-lucide={icon} className="w-5 h-5"></i>
-                <span className="text-sm font-semibold">{label}</span>
-            </button>
-        );
-
-        // --- MAIN APPLICATION ---
         const App = () => {
             const [activeSlide, setActiveSlide] = useState(1);
             const [loading, setLoading] = useState(false);
-            const [wcResults, setWcResults] = useState({ nwc: 0, turnover: 0, final: 0 });
-            const [inputs, setInputs] = useState({ ca: '', cl: '', sales: '' });
+            const [file, setFile] = useState(null);
             
+            // State for all 3 modules
+            const [results, setResults] = useState({
+                wc: { nwc: 0, turnover: 0, final: 0 },
+                agri: { eligibility: 0, status: 'Pending' },
+                bank: { avg_credit: 0, surplus: 0, status: 'Not Parsed' }
+            });
+
             useEffect(() => { lucide.createIcons(); }, [activeSlide]);
 
-            const handleWCCalculate = async () => {
+            // --- API HANDLERS ---
+            const calculateWC = async (inputs) => {
                 setLoading(true);
                 try {
-                    const response = await fetch(`${BACKEND_URL}/wc/calculate`, {
+                    const res = await fetch(`${BACKEND_URL}/wc/calculate`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            current_assets: parseFloat(inputs.ca) || 0,
-                            current_liabilities: parseFloat(inputs.cl) || 0,
-                            annual_sales: parseFloat(inputs.sales) || 0
-                        })
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(inputs)
                     });
-                    const data = await response.json();
-                    setWcResults({
-                        nwc: data.nwc_eligible,
-                        turnover: data.turnover_eligible,
-                        final: Math.max(data.nwc_eligible, data.turnover_eligible)
-                    });
-                } catch (err) {
-                    console.error("Backend connection failed", err);
-                    alert("Error connecting to Railway Backend.");
-                } finally {
-                    setLoading(false);
-                }
+                    const d = await res.json();
+                    setResults(prev => ({...prev, wc: { nwc: d.nwc_eligible, turnover: d.turnover_eligible, final: Math.max(d.nwc_eligible, d.turnover_eligible) }}));
+                } finally { setLoading(false); }
+            };
+
+            const handleFileUpload = async () => {
+                if (!file) return alert("Select a file first");
+                setLoading(true);
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const res = await fetch(`${BACKEND_URL}/bank/upload`, { method: 'POST', body: formData });
+                    const d = await res.json();
+                    setResults(prev => ({...prev, bank: { avg_credit: d.avg_credit, surplus: d.surplus, status: 'Analysis Complete' }}));
+                } finally { setLoading(false); }
             };
 
             return (
@@ -98,64 +75,81 @@
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Executive Suite</p>
                         </div>
                         <nav className="space-y-2 flex-1">
-                            <SidebarItem id={1} label="Working Capital" icon="wallet" active={activeSlide} set={setActiveSlide} />
-                            <SidebarItem id={2} label="Agriculture" icon="sprout" active={activeSlide} set={setActiveSlide} />
-                            <SidebarItem id={3} label="Banking Analysis" icon="landmark" active={activeSlide} set={setActiveSlide} />
-                            <SidebarItem id={4} label="Executive Dashboard" icon="layout-dashboard" active={activeSlide} set={setActiveSlide} />
+                            {['Working Capital', 'Agriculture', 'Banking Analysis', 'Dashboard'].map((label, i) => (
+                                <button key={i} onClick={() => setActiveSlide(i+1)} className={`w-full flex items-center gap-3 p-3.5 rounded-xl transition-all ${activeSlide === i+1 ? 'active-tab' : 'text-slate-400 hover:bg-white/5'}`}>
+                                    <i data-lucide={['wallet', 'sprout', 'landmark', 'layout-dashboard'][i]} className="w-5 h-5"></i>
+                                    <span className="text-sm font-semibold">{label}</span>
+                                </button>
+                            ))}
                         </nav>
-                        <div className="glass p-4 border-emerald-500/20 rounded-xl">
-                            <div className="flex items-center gap-2 text-emerald-500">
-                                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                <span className="text-[10px] font-bold uppercase">Railway Live</span>
-                            </div>
+                        <div className="glass p-4 rounded-xl flex items-center gap-2 text-emerald-500">
+                            <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-[10px] font-bold uppercase">Railway Live</span>
                         </div>
                     </aside>
 
                     {/* MAIN CONTENT */}
                     <main className="flex-1 overflow-y-auto p-12 bg-gradient-to-br from-[#0F172A] to-[#020617]">
                         <div className="max-w-5xl mx-auto slide-up">
+                            
+                            {/* SLIDE 1: WORKING CAPITAL */}
                             {activeSlide === 1 && (
                                 <div>
-                                    <header className="mb-10">
-                                        <h2 className="text-3xl font-bold italic">Working Capital</h2>
-                                        <p className="text-slate-400 mt-1 uppercase text-xs tracking-widest font-semibold opacity-60">Eligibility Engine</p>
-                                    </header>
+                                    <h2 className="text-3xl font-bold italic mb-8">Working Capital</h2>
                                     <div className="grid grid-cols-3 gap-6 mb-10">
-                                        <KPITile title="NWC Eligibility" value={wcResults.nwc} />
-                                        <KPITile title="Turnover Eligibility" value={wcResults.turnover} />
-                                        <KPITile title="Recommended Sanction" value={wcResults.final} status="safe" />
+                                        <KPICard title="NWC Eligible" val={results.wc.nwc} />
+                                        <KPICard title="Turnover Eligible" val={results.wc.turnover} />
+                                        <KPICard title="Final Limit" val={results.wc.final} color="emerald" />
                                     </div>
-                                    <div className="glass p-10 rounded-3xl">
-                                        <div className="grid grid-cols-3 gap-8">
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Assets</label>
-                                                <input type="number" value={inputs.ca} onChange={(e)=>setInputs({...inputs, ca: e.target.value})} className="w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 outline-none focus:border-emerald-500 transition-all font-bold text-xl" placeholder="0.00"/>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Liabilities</label>
-                                                <input type="number" value={inputs.cl} onChange={(e)=>setInputs({...inputs, cl: e.target.value})} className="w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 outline-none focus:border-emerald-500 transition-all font-bold text-xl" placeholder="0.00"/>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Annual Sales</label>
-                                                <input type="number" value={inputs.sales} onChange={(e)=>setInputs({...inputs, sales: e.target.value})} className="w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 outline-none focus:border-emerald-500 transition-all font-bold text-xl" placeholder="0.00"/>
-                                            </div>
-                                        </div>
-                                        <button 
-                                            onClick={handleWCCalculate}
-                                            disabled={loading}
-                                            className="mt-10 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 px-10 rounded-2xl shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-                                        >
-                                            {loading ? "Processing Engine..." : "Run Credit Analysis"}
+                                    <div className="glass p-8 rounded-3xl">
+                                        <button onClick={() => calculateWC({current_assets: 100, current_liabilities: 40, annual_sales: 500})} className="w-full bg-emerald-600 p-4 rounded-xl font-bold">Run Test Calculation (100 CA / 40 CL / 500 Sales)</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SLIDE 3: BANKING (UPLOAD SECTION) */}
+                            {activeSlide === 3 && (
+                                <div>
+                                    <h2 className="text-3xl font-bold italic mb-8">Banking Analysis</h2>
+                                    <div className="grid grid-cols-2 gap-6 mb-10">
+                                        <KPICard title="Avg Monthly Credit" val={results.bank.avg_credit} />
+                                        <KPICard title="Banking Status" val={results.bank.status} isNum={false} />
+                                    </div>
+                                    <div className="glass p-12 rounded-3xl border-dashed border-2 border-white/10 flex flex-col items-center">
+                                        <i data-lucide="upload-cloud" className="w-12 h-12 text-slate-500 mb-4"></i>
+                                        <p className="text-slate-400 mb-6">Upload Bank Statement (PDF / Excel)</p>
+                                        <input type="file" onChange={(e) => setFile(e.target.files[0])} className="mb-6 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-500/10 file:text-emerald-500 hover:file:bg-emerald-500/20 cursor-pointer"/>
+                                        <button onClick={handleFileUpload} className="bg-white text-black font-bold py-3 px-10 rounded-xl hover:bg-slate-200 transition-all">
+                                            {loading ? "Parsing File..." : "Start Perfios Analysis"}
                                         </button>
                                     </div>
                                 </div>
                             )}
-                            {/* Slide 2, 3, 4 placeholders remain in original structure */}
+
+                            {/* DASHBOARD */}
+                            {activeSlide === 4 && (
+                                <div className="text-center">
+                                    <h2 className="text-3xl font-bold italic mb-8">Executive Summary</h2>
+                                    <div className="glass p-20 rounded-3xl">
+                                        <i data-lucide="shield-check" className="w-16 h-16 text-emerald-500 mx-auto mb-6"></i>
+                                        <p className="text-2xl font-bold">Overall Eligibility: ₹{results.wc.final + results.agri.eligibility} Lakhs</p>
+                                        <button className="mt-8 bg-emerald-600 px-8 py-3 rounded-xl font-bold tracking-widest">DOWNLOAD FULL CAM PDF</button>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </main>
                 </div>
             );
         };
+
+        const KPICard = ({ title, val, color="slate", isNum=true }) => (
+            <div className={`glass p-6 rounded-2xl border-l-4 ${color === 'emerald' ? 'border-l-emerald-500' : 'border-l-slate-600'}`}>
+                <p className="text-[10px] font-bold uppercase text-slate-500 mb-2">{title}</p>
+                <p className="text-2xl font-bold tracking-tight">{isNum ? `₹${val}` : val}</p>
+            </div>
+        );
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
