@@ -6,22 +6,24 @@ import { bankingAnalyze } from "../../services/api";
 export default function Banking() {
   const [transactions, setTransactions] = useState([]);
   const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   /* =========================
      HANDLE FILE UPLOAD
   ========================= */
-  const handleUpload = (files) => {
+  const handleUpload = (event) => {
+    const files = event.target.files;
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
-      const ext = file.name.split(".").pop().toLowerCase();
+      const extension = file.name.split(".").pop().toLowerCase();
 
-      if (ext === "csv") {
+      if (extension === "csv") {
         parseCSV(file);
-      } else if (ext === "xlsx" || ext === "xls") {
+      } else if (extension === "xlsx" || extension === "xls") {
         parseExcel(file);
       } else {
-        alert("Only CSV and Excel supported currently.");
+        alert("Only CSV and Excel files are supported.");
       }
     });
   };
@@ -37,6 +39,9 @@ export default function Banking() {
         const cleaned = res.data.map(normalizeRow);
         setTransactions((prev) => [...prev, ...cleaned]);
       },
+      error: (err) => {
+        console.error("CSV Parsing Error:", err);
+      },
     });
   };
 
@@ -47,13 +52,17 @@ export default function Banking() {
     const reader = new FileReader();
 
     reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet);
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
 
-      const cleaned = json.map(normalizeRow);
-      setTransactions((prev) => [...prev, ...cleaned]);
+        const cleaned = json.map(normalizeRow);
+        setTransactions((prev) => [...prev, ...cleaned]);
+      } catch (err) {
+        console.error("Excel Parsing Error:", err);
+      }
     };
 
     reader.readAsArrayBuffer(file);
@@ -73,15 +82,17 @@ export default function Banking() {
   };
 
   /* =========================
-     ANALYZE
+     ANALYZE BANKING
   ========================= */
   const handleAnalyze = async () => {
     if (transactions.length === 0) {
-      alert("Upload file first");
+      alert("Please upload a statement first.");
       return;
     }
 
     try {
+      setLoading(true);
+
       const res = await bankingAnalyze({
         transactions,
         months_count: 3,
@@ -90,15 +101,17 @@ export default function Banking() {
       setResult(res.data);
       localStorage.setItem("banking_result", JSON.stringify(res.data));
     } catch (err) {
-      console.error(err);
-      alert("Analysis failed");
+      console.error("Analysis Error:", err);
+      alert("Banking analysis failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6 bg-slate-900 p-6 rounded-2xl border border-slate-800">
+    <div className="space-y-8 bg-slate-900 p-6 rounded-2xl border border-slate-800">
 
-      <h2 className="text-2xl font-bold text-emerald-400">
+      <h2 className="text-3xl font-bold text-emerald-400">
         Banking Intelligence Engine
       </h2>
 
@@ -107,8 +120,8 @@ export default function Banking() {
         type="file"
         accept=".csv,.xlsx,.xls"
         multiple
-        onChange={(e) => handleUpload(e.target.files)}
-        className="bg-slate-800 p-3 rounded-xl"
+        onChange={handleUpload}
+        className="bg-slate-800 p-3 rounded-xl w-full"
       />
 
       <p className="text-slate-400">
@@ -120,12 +133,12 @@ export default function Banking() {
         onClick={handleAnalyze}
         className="bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-xl font-semibold"
       >
-        Run Banking Analysis
+        {loading ? "Analyzing..." : "Run Banking Analysis"}
       </button>
 
       {/* RESULTS */}
       {result && (
-        <div className="bg-slate-800 p-4 rounded-xl space-y-2">
+        <div className="bg-slate-800 p-6 rounded-xl space-y-2">
           <p>Avg Monthly Credit: ₹ {result.consolidated.avg_monthly_credit}</p>
           <p>Avg Monthly Debit: ₹ {result.consolidated.avg_monthly_debit}</p>
           <p>Net Surplus: ₹ {result.consolidated.net_monthly_surplus}</p>
