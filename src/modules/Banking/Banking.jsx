@@ -118,7 +118,6 @@ export default function Banking() {
       {/* FILE INPUT */}
       <input
         type="file"
-        accept=".csv,.xlsx,.xls"
         multiple
         onChange={handleUpload}
         className="bg-slate-800 p-3 rounded-xl w-full"
