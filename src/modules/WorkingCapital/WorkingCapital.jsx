@@ -2,10 +2,10 @@ import { useState } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker?url";
 import { wcCalculate } from "../../services/api";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
 const dictionary = {
   current_assets: ["current assets"],
