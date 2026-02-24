@@ -1,223 +1,137 @@
 import { useState } from "react";
-import axios from "axios";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
 import { wcCalculate } from "../../services/api";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
-const API_BASE = "https://YOUR-RAILWAY-URL"; // replace
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const dictionary = {
+  current_assets: ["current assets"],
+  current_liabilities: ["current liabilities"],
+  inventory: ["inventory", "stock"],
+  receivables: ["receivable", "debtors"],
+  payables: ["payable", "creditors"],
+  annual_sales: ["revenue", "sales", "turnover"],
+  cogs: ["cost of goods sold", "cogs"],
+  bank_credit: ["bank overdraft", "cash credit"]
+};
 
 export default function WorkingCapital() {
-  const [form, setForm] = useState({
-    current_assets: "",
-    current_liabilities: "",
-    inventory: "",
-    receivables: "",
-    payables: "",
-    annual_sales: "",
-    cogs: "",
-    bank_credit: "",
-  });
-
+  const [form, setForm] = useState({});
   const [result, setResult] = useState(null);
-  const [stress, setStress] = useState(20);
-  const [loading, setLoading] = useState(false);
 
   /* ===============================
-     HANDLE INPUT CHANGE
-  =============================== */
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  /* ===============================
-     FILE UPLOAD
+     PARSE FILE
   =============================== */
   const handleUpload = async (file) => {
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
+    const ext = file.name.split(".").pop().toLowerCase();
 
-      const res = await axios.post(`${API_BASE}/wc/upload`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    if (ext === "csv") parseCSV(file);
+    else if (ext === "xlsx" || ext === "xls") parseExcel(file);
+    else if (ext === "pdf") parsePDF(file);
+    else alert("Unsupported format");
+  };
 
-      setForm((prev) => ({ ...prev, ...res.data }));
-      alert("Parsed successfully.");
-    } catch (err) {
-      console.error(err);
-      alert("File parsing failed.");
-    }
+  const parseCSV = (file) => {
+    Papa.parse(file, {
+      header: false,
+      complete: (res) => extractFinancials(res.data),
+    });
+  };
+
+  const parseExcel = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      extractFinancials(json);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const parsePDF = async (file) => {
+    const reader = new FileReader();
+    reader.onload = async function () {
+      const typedarray = new Uint8Array(this.result);
+      const pdf = await pdfjsLib.getDocument(typedarray).promise;
+
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item) => item.str).join(" ") + "\n";
+      }
+
+      const rows = text.split("\n").map((r) => r.split(" "));
+      extractFinancials(rows);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   /* ===============================
-     BACKEND CALCULATE
+     EXTRACT LOGIC
   =============================== */
-  const handleCalculate = async () => {
-    try {
-      setLoading(true);
+  const extractFinancials = (rows) => {
+    let extracted = {};
 
-      const payload = {};
-      Object.keys(form).forEach((k) => {
-        payload[k] = Number(form[k]) || 0;
+    rows.forEach((row) => {
+      const line = row.join(" ").toLowerCase();
+
+      Object.keys(dictionary).forEach((key) => {
+        dictionary[key].forEach((keyword) => {
+          if (line.includes(keyword)) {
+            const numberMatch = line.match(/[-+]?\d[\d,]*/);
+            if (numberMatch) {
+              extracted[key] = parseFloat(
+                numberMatch[0].replace(/,/g, "")
+              );
+            }
+          }
+        });
       });
+    });
 
-      const res = await wcCalculate(payload);
-
-      setResult(res.data);
-      localStorage.setItem("wc_result", JSON.stringify(res.data));
-    } catch (err) {
-      console.error(err);
-      alert("Backend error. Check console.");
-    } finally {
-      setLoading(false);
-    }
+    setForm((prev) => ({ ...prev, ...extracted }));
   };
 
   /* ===============================
-     HEATMAP COLOR
+     ANALYZE
   =============================== */
-  const getHeatColor = () => {
-    if (!result) return "bg-gray-700";
-    if (result.liquidity_score > 80) return "bg-emerald-500";
-    if (result.liquidity_score > 60) return "bg-yellow-500";
-    return "bg-red-500";
+  const handleAnalyze = async () => {
+    const res = await wcCalculate(form);
+    setResult(res.data);
+    localStorage.setItem("wc_result", JSON.stringify(res.data));
   };
 
   return (
-    <div className="space-y-8">
-
-      <h2 className="text-3xl font-bold text-blue-400">
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-emerald-400">
         Working Capital Engine
-      </h2>
+      </h1>
 
-      {/* ===============================
-          FILE UPLOAD SECTION
-      =============================== */}
-      <div className="flex gap-10">
-        <div>
-          <p className="text-slate-400 mb-2">Upload Balance Sheet</p>
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls,.pdf"
-            onChange={(e) => handleUpload(e.target.files[0])}
-          />
-        </div>
-
-        <div>
-          <p className="text-slate-400 mb-2">Upload Profit & Loss</p>
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls,.pdf"
-            onChange={(e) => handleUpload(e.target.files[0])}
-          />
-        </div>
-      </div>
-
-      {/* ===============================
-          INPUT SECTION
-      =============================== */}
-      <div className="grid grid-cols-4 gap-4">
-        {Object.keys(form).map((key) => (
-          <input
-            key={key}
-            name={key}
-            value={form[key]}
-            onChange={handleChange}
-            placeholder={key.replace("_", " ").toUpperCase()}
-            className="bg-slate-800 p-3 rounded text-white"
-          />
-        ))}
-      </div>
+      <input
+        type="file"
+        onChange={(e) => handleUpload(e.target.files[0])}
+        className="bg-slate-900 p-3 rounded-xl"
+      />
 
       <button
-        onClick={handleCalculate}
-        className="bg-emerald-600 px-6 py-3 rounded"
+        onClick={handleAnalyze}
+        className="bg-emerald-600 px-6 py-3 rounded-xl"
       >
-        {loading ? "Processing..." : "Run Backend Analysis"}
+        Run Analysis
       </button>
 
-      {/* ===============================
-          RESULTS SECTION
-      =============================== */}
       {result && (
-        <>
-          <div className="grid grid-cols-3 gap-6 mt-6">
-            {Object.entries(result).map(([k, v]) => (
-              <div key={k} className="bg-slate-900 p-4 rounded">
-                <p className="text-slate-400">{k}</p>
-                <h3 className="text-xl font-bold">{v}</h3>
-              </div>
-            ))}
-          </div>
-
-          {/* ===============================
-              CHART
-          =============================== */}
-          <div className="mt-10 bg-slate-900 p-6 rounded">
-            <h3 className="text-xl font-bold mb-4 text-blue-400">
-              Financial Overview
-            </h3>
-
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={[
-                  { name: "NWC", value: result.nwc },
-                  { name: "Drawing Power", value: result.drawing_power },
-                  { name: "Operating Cycle", value: result.operating_cycle },
-                ]}
-              >
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* ===============================
-              HEATMAP
-          =============================== */}
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold mb-2">
-              Liquidity Stress Heatmap
-            </h4>
-
-            <div className="grid grid-cols-5 gap-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className={`h-10 rounded ${getHeatColor()}`} />
-              ))}
-            </div>
-          </div>
-
-          {/* ===============================
-              STRESS SLIDER
-          =============================== */}
-          <div className="mt-6 bg-slate-900 p-6 rounded">
-            <h4 className="text-lg font-semibold mb-2">
-              Stress Simulation ({stress}%)
-            </h4>
-
-            <input
-              type="range"
-              min="10"
-              max="40"
-              value={stress}
-              onChange={(e) => setStress(e.target.value)}
-              className="w-full"
-            />
-
-            <p className="mt-4">
-              Stressed NWC: ₹{" "}
-              {(result.nwc - (result.nwc * stress) / 100).toFixed(2)}
-            </p>
-          </div>
-        </>
+        <div className="bg-slate-900 p-6 rounded-xl mt-6">
+          <p>NWC: ₹ {result.nwc}</p>
+          <p>Current Ratio: {result.current_ratio}</p>
+          <p>Liquidity Score: {result.liquidity_score}</p>
+        </div>
       )}
     </div>
   );
