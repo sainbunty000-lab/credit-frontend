@@ -116,12 +116,42 @@ export default function Banking() {
       </h2>
 
       {/* FILE INPUT */}
+      
       <input
-        type="file"
-        multiple
-        onChange={handleUpload}
-        className="bg-slate-800 p-3 rounded-xl w-full"
-      />
+  type="file"
+  multiple
+  onChange={(e) => {
+    const files = e.target.files;
+
+    if (!files || files.length === 0) {
+      alert("No file selected");
+      return;
+    }
+
+    const file = files[0];
+
+    alert("Selected: " + file.name);
+
+    const reader = new FileReader();
+
+    reader.onload = function () {
+      alert("File loaded successfully");
+
+      setTransactions([
+        {
+          date: "2024-01-01",
+          credit: 10000,
+          debit: 2000,
+          desc: "Test Entry",
+          account: "Primary"
+        }
+      ]);
+    };
+
+    reader.readAsText(file);
+  }}
+  className="bg-slate-800 p-3 rounded-xl w-full"
+/>
 
       <p className="text-slate-400">
         Transactions Loaded: {transactions.length}
