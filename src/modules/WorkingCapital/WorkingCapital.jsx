@@ -1,133 +1,197 @@
 import { useState } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker?url";
 import { wcCalculate } from "../../services/api";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
-
-const dictionary = {
-  current_assets: ["current assets"],
-  current_liabilities: ["current liabilities"],
-  inventory: ["inventory", "stock"],
-  receivables: ["receivable", "debtors"],
-  payables: ["payable", "creditors"],
-  annual_sales: ["revenue", "sales", "turnover"],
-  cogs: ["cost of goods sold", "cogs"],
-  bank_credit: ["bank overdraft", "cash credit"]
-};
-
 export default function WorkingCapital() {
-  const [form, setForm] = useState({});
-  const [result, setResult] = useState(null);
+  const [form, setForm] = useState({
+    current_assets: "",
+    current_liabilities: "",
+    inventory: "",
+    receivables: "",
+    payables: "",
+    annual_sales: "",
+    cogs: "",
+    bank_credit: "",
+  });
 
-  /* ===============================
-     PARSE FILE
-  =============================== */
-  const handleUpload = async (file) => {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  /* =========================
+     HANDLE FILE UPLOAD
+  ========================= */
+  const handleUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
     const ext = file.name.split(".").pop().toLowerCase();
 
-    if (ext === "csv") parseCSV(file);
-    else if (ext === "xlsx" || ext === "xls") parseExcel(file);
-    else if (ext === "pdf") parsePDF(file);
-    else alert("Unsupported format");
+    if (ext === "csv") {
+      parseCSV(file);
+    } else if (ext === "xlsx" || ext === "xls") {
+      parseExcel(file);
+    } else {
+      alert("Only CSV and Excel supported.");
+    }
   };
 
+  /* =========================
+     CSV PARSER
+  ========================= */
   const parseCSV = (file) => {
     Papa.parse(file, {
       header: false,
-      complete: (res) => extractFinancials(res.data),
+      skipEmptyLines: true,
+      complete: (res) => {
+        extractFinancials(res.data);
+      },
+      error: (err) => {
+        console.error("CSV Parse Error:", err);
+      },
     });
   };
 
+  /* =========================
+     EXCEL PARSER
+  ========================= */
   const parseExcel = (file) => {
     const reader = new FileReader();
+
     reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      extractFinancials(json);
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  const parsePDF = async (file) => {
-    const reader = new FileReader();
-    reader.onload = async function () {
-      const typedarray = new Uint8Array(this.result);
-      const pdf = await pdfjsLib.getDocument(typedarray).promise;
-
-      let text = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item) => item.str).join(" ") + "\n";
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        extractFinancials(json);
+      } catch (err) {
+        console.error("Excel Parse Error:", err);
       }
-
-      const rows = text.split("\n").map((r) => r.split(" "));
-      extractFinancials(rows);
     };
+
     reader.readAsArrayBuffer(file);
   };
 
-  /* ===============================
-     EXTRACT LOGIC
-  =============================== */
+  /* =========================
+     SIMPLE KEYWORD MATCHING
+  ========================= */
   const extractFinancials = (rows) => {
-    let extracted = {};
+    const extracted = {};
 
     rows.forEach((row) => {
       const line = row.join(" ").toLowerCase();
 
-      Object.keys(dictionary).forEach((key) => {
-        dictionary[key].forEach((keyword) => {
-          if (line.includes(keyword)) {
-            const numberMatch = line.match(/[-+]?\d[\d,]*/);
-            if (numberMatch) {
-              extracted[key] = parseFloat(
-                numberMatch[0].replace(/,/g, "")
-              );
-            }
-          }
-        });
-      });
+      if (line.includes("current assets")) {
+        extracted.current_assets = extractNumber(line);
+      }
+      if (line.includes("current liabilities")) {
+        extracted.current_liabilities = extractNumber(line);
+      }
+      if (line.includes("inventory")) {
+        extracted.inventory = extractNumber(line);
+      }
+      if (line.includes("receivable") || line.includes("debtors")) {
+        extracted.receivables = extractNumber(line);
+      }
+      if (line.includes("payable") || line.includes("creditors")) {
+        extracted.payables = extractNumber(line);
+      }
+      if (line.includes("revenue") || line.includes("sales")) {
+        extracted.annual_sales = extractNumber(line);
+      }
+      if (line.includes("cost of goods") || line.includes("cogs")) {
+        extracted.cogs = extractNumber(line);
+      }
+      if (line.includes("bank overdraft") || line.includes("cash credit")) {
+        extracted.bank_credit = extractNumber(line);
+      }
     });
 
     setForm((prev) => ({ ...prev, ...extracted }));
   };
 
-  /* ===============================
-     ANALYZE
-  =============================== */
+  /* =========================
+     NUMBER EXTRACTOR
+  ========================= */
+  const extractNumber = (text) => {
+    const match = text.match(/[-+]?\d[\d,]*/);
+    return match ? match[0].replace(/,/g, "") : "";
+  };
+
+  /* =========================
+     MANUAL INPUT CHANGE
+  ========================= */
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  /* =========================
+     ANALYZE WC
+  ========================= */
   const handleAnalyze = async () => {
-    const res = await wcCalculate(form);
-    setResult(res.data);
-    localStorage.setItem("wc_result", JSON.stringify(res.data));
+    try {
+      setLoading(true);
+
+      const res = await wcCalculate({
+        current_assets: Number(form.current_assets) || 0,
+        current_liabilities: Number(form.current_liabilities) || 0,
+        inventory: Number(form.inventory) || 0,
+        receivables: Number(form.receivables) || 0,
+        payables: Number(form.payables) || 0,
+        annual_sales: Number(form.annual_sales) || 0,
+        cogs: Number(form.cogs) || 0,
+        bank_credit: Number(form.bank_credit) || 0,
+      });
+
+      setResult(res.data);
+      localStorage.setItem("wc_result", JSON.stringify(res.data));
+    } catch (err) {
+      console.error("WC Analysis Error:", err);
+      alert("Working Capital analysis failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-emerald-400">
-        Working Capital Engine
-      </h1>
+    <div className="space-y-8 bg-slate-900 p-6 rounded-2xl border border-slate-800">
 
+      <h2 className="text-3xl font-bold text-emerald-400">
+        Working Capital Engine
+      </h2>
+
+      {/* FILE INPUT */}
       <input
         type="file"
-        onChange={(e) => handleUpload(e.target.files[0])}
-        className="bg-slate-900 p-3 rounded-xl"
+        accept=".csv,.xlsx,.xls"
+        onChange={handleUpload}
+        className="bg-slate-800 p-3 rounded-xl w-full"
       />
+
+      {/* FORM INPUTS */}
+      <div className="grid grid-cols-2 gap-4">
+        {Object.keys(form).map((key) => (
+          <input
+            key={key}
+            name={key}
+            value={form[key]}
+            onChange={handleChange}
+            placeholder={key.replace("_", " ").toUpperCase()}
+            className="bg-slate-800 p-3 rounded-xl"
+          />
+        ))}
+      </div>
 
       <button
         onClick={handleAnalyze}
-        className="bg-emerald-600 px-6 py-3 rounded-xl"
+        className="bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-xl font-semibold"
       >
-        Run Analysis
+        {loading ? "Analyzing..." : "Run WC Analysis"}
       </button>
 
       {result && (
-        <div className="bg-slate-900 p-6 rounded-xl mt-6">
+        <div className="bg-slate-800 p-6 rounded-xl space-y-2">
           <p>NWC: ₹ {result.nwc}</p>
           <p>Current Ratio: {result.current_ratio}</p>
           <p>Liquidity Score: {result.liquidity_score}</p>
