@@ -1,242 +1,155 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
 import { bankingAnalyze } from "../../services/api";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function Banking() {
   const [transactions, setTransactions] = useState([]);
   const [result, setResult] = useState(null);
-  const [months, setMonths] = useState(3);
-  const [loading, setLoading] = useState(false);
 
-  /* ======================================
-     HANDLE MULTI CSV UPLOAD
-  ====================================== */
-  const handleUpload = (files) => {
-    let merged = [];
+  /* ============================
+     FILE HANDLER
+  ============================ */
+  const handleUpload = async (file) => {
+    const ext = file.name.split(".").pop().toLowerCase();
 
-    Array.from(files).forEach((file) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (res) => {
-          const cleaned = res.data.map((row) => ({
-            date: row.date,
-            credit: parseFloat(row.credit || 0),
-            debit: parseFloat(row.debit || 0),
-            desc: row.desc || "",
-            account: file.name,
-          }));
+    if (ext === "csv") {
+      parseCSV(file);
+    } else if (ext === "xlsx" || ext === "xls") {
+      parseExcel(file);
+    } else if (ext === "pdf") {
+      parsePDF(file);
+    } else {
+      alert("Unsupported file type");
+    }
+  };
 
-          merged = [...merged, ...cleaned];
-          setTransactions(merged);
-        },
-      });
+  /* ============================
+     CSV PARSER
+  ============================ */
+  const parseCSV = (file) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (res) => {
+        const cleaned = res.data.map(normalizeRow);
+        setTransactions(cleaned);
+      },
     });
   };
 
-  /* ======================================
-     AUTO ANALYZE WHEN TRANSACTIONS UPDATE
-  ====================================== */
-  useEffect(() => {
-    if (transactions.length > 0) {
-      runAnalysis();
-    }
-  }, [transactions]);
+  /* ============================
+     EXCEL PARSER
+  ============================ */
+  const parseExcel = (file) => {
+    const reader = new FileReader();
 
-  /* ======================================
-     CALL BACKEND ANALYSIS
-  ====================================== */
-  const runAnalysis = async () => {
-    try {
-      setLoading(true);
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
 
-      const res = await bankingAnalyze({
-        transactions,
-        months_count: months,
-      });
+      const cleaned = json.map(normalizeRow);
+      setTransactions(cleaned);
+    };
 
-      setResult(res.data);
-      localStorage.setItem("banking_result", JSON.stringify(res.data));
-    } catch (err) {
-      console.error(err);
-      alert("Banking analysis failed");
-    } finally {
-      setLoading(false);
-    }
+    reader.readAsArrayBuffer(file);
   };
 
-  /* ======================================
-     UI
-  ====================================== */
-  return (
-    <div className="p-10 space-y-12 bg-slate-950 min-h-screen text-white">
+  /* ============================
+     PDF PARSER (TEXT BASED)
+  ============================ */
+  const parsePDF = async (file) => {
+    const fileReader = new FileReader();
 
-      <h1 className="text-4xl font-bold text-emerald-400">
-        Banking Intelligence Engine
+    fileReader.onload = async function () {
+      const typedarray = new Uint8Array(this.result);
+      const pdf = await pdfjsLib.getDocument(typedarray).promise;
+
+      let textContent = "";
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        textContent += content.items.map((item) => item.str).join(" ");
+      }
+
+      const rows = textContent.split("\n");
+
+      const parsed = rows.map((line) => {
+        const parts = line.split(" ");
+        return {
+          date: parts[0] || "",
+          credit: parseFloat(parts[1]) || 0,
+          debit: parseFloat(parts[2]) || 0,
+          desc: parts.slice(3).join(" "),
+          account: file.name,
+        };
+      });
+
+      setTransactions(parsed);
+    };
+
+    fileReader.readAsArrayBuffer(file);
+  };
+
+  /* ============================
+     NORMALIZE ROW
+  ============================ */
+  const normalizeRow = (row) => {
+    return {
+      date: row.date || row.Date || "",
+      credit: parseFloat(row.credit || row.Credit || 0),
+      debit: parseFloat(row.debit || row.Debit || 0),
+      desc: row.desc || row.Description || "",
+      account: row.account || "Primary",
+    };
+  };
+
+  /* ============================
+     ANALYZE
+  ============================ */
+  const handleAnalyze = async () => {
+    const res = await bankingAnalyze({
+      transactions,
+      months_count: 3,
+    });
+
+    setResult(res.data);
+    localStorage.setItem("banking_result", JSON.stringify(res.data));
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-emerald-400">
+        Banking Intelligence
       </h1>
 
-      {/* Upload Section */}
-      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-        <p className="mb-4 font-semibold">
-          Upload Bank Statements (CSV)
-        </p>
+      <input
+        type="file"
+        onChange={(e) => handleUpload(e.target.files[0])}
+        className="bg-slate-900 p-3 rounded-xl"
+      />
 
-        <input
-          type="file"
-          accept=".csv"
-          multiple
-          onChange={(e) => handleUpload(e.target.files)}
-        />
-
-        <p className="text-slate-400 mt-3">
-          Accounts Loaded: {new Set(transactions.map(t => t.account)).size}
-        </p>
-      </div>
-
-      {loading && (
-        <div className="text-amber-400 text-lg font-semibold">
-          Analyzing transactions...
-        </div>
-      )}
+      <button
+        onClick={handleAnalyze}
+        className="bg-emerald-600 px-6 py-3 rounded-xl"
+      >
+        Analyze
+      </button>
 
       {result && (
-        <>
-          {/* ================= CONSOLIDATED METRICS ================= */}
-          <div className="grid grid-cols-4 gap-6">
-
-            <Metric
-              title="Avg Monthly Credit"
-              value={`₹ ${result.consolidated.avg_monthly_credit}`}
-            />
-
-            <Metric
-              title="Avg Monthly Debit"
-              value={`₹ ${result.consolidated.avg_monthly_debit}`}
-            />
-
-            <Metric
-              title="Net Monthly Surplus"
-              value={`₹ ${result.consolidated.net_monthly_surplus}`}
-              danger={result.consolidated.net_monthly_surplus < 0}
-            />
-
-            <Metric
-              title="Hygiene Score"
-              value={`${result.hygiene_score}`}
-              highlight
-            />
-          </div>
-
-          {/* ================= HYGIENE STATUS ================= */}
-          <div className="text-2xl font-bold">
-            Banking Status:
-            <span className={
-              result.hygiene_status === "Strong"
-                ? "text-emerald-400"
-                : result.hygiene_status === "Moderate"
-                ? "text-amber-400"
-                : "text-red-400"
-            }>
-              {" "}{result.hygiene_status}
-            </span>
-          </div>
-
-          {/* ================= ACCOUNT SUMMARY ================= */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">
-              Account-Level Summary
-            </h2>
-
-            <table className="w-full border border-slate-800">
-              <thead>
-                <tr className="bg-slate-900">
-                  <th className="p-3 text-left">Account</th>
-                  <th className="p-3 text-left">Total Credit</th>
-                  <th className="p-3 text-left">Total Debit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(result.account_summary).map(
-                  ([acc, data]) => (
-                    <tr key={acc} className="border-t border-slate-800">
-                      <td className="p-3">{acc}</td>
-                      <td className="p-3">{data.credit}</td>
-                      <td className="p-3">{data.debit}</td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* ================= MONTHLY TREND CHART ================= */}
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 className="mb-4 font-semibold">
-              Monthly Surplus Trend
-            </h2>
-
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={Object.entries(result.monthly_breakdown).map(
-                  ([month, data]) => ({
-                    month,
-                    surplus: data.credit - data.debit,
-                  })
-                )}
-              >
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="surplus"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* ================= RISK ALERTS ================= */}
-          <div className="grid grid-cols-2 gap-6">
-            <Metric
-              title="Bounce Count"
-              value={result.bounce_count}
-              danger={result.bounce_count > 0}
-            />
-
-            <Metric
-              title="Fraud Flags"
-              value={result.fraud_flags}
-              danger={result.fraud_flags > 0}
-            />
-          </div>
-        </>
+        <div className="bg-slate-900 p-6 rounded-xl mt-6">
+          <p>Hygiene Score: {result.hygiene_score}</p>
+          <p>Status: {result.hygiene_status}</p>
+          <p>Net Monthly Surplus: ₹ {result.consolidated.net_monthly_surplus}</p>
+        </div>
       )}
-    </div>
-  );
-}
-
-/* ================= METRIC CARD ================= */
-function Metric({ title, value, highlight, danger }) {
-  return (
-    <div className={`p-6 rounded-xl border border-slate-800 ${
-      highlight ? "bg-emerald-900" : "bg-slate-900"
-    }`}>
-      <p className="text-slate-400 text-sm">{title}</p>
-      <h2 className={`text-2xl font-bold mt-2 ${
-        danger ? "text-red-400" : "text-white"
-      }`}>
-        {value}
-      </h2>
     </div>
   );
 }
